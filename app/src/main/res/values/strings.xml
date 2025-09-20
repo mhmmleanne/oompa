@@ -1,17 +1,24 @@
 <resources>
     <string name="app_name">oompa</string>
-    <string name="currently_blocked_apps">These apps are currently being blocked:</string>
+    <string name="currently_blocked_apps">Number of apps currently being blocked:</string>
     <string name="unlock_app">Unlock Apps Now</string>
     <string name="start_exercise">Start Exercising</string>
     <string name="exercises_done">Exercises done so far: </string>
     <string name="time_left_to_doomscroll">Time left to doomscroll</string>
-    <string name="modify_blocked_apps">Modify blocked apps</string>
+    <string name="modify_blocked_apps">Modify</string>
     <string name="modify_blocked_timing">Modify blocked timing</string>
     <string name="instructions">1 pushup = 1 min for doomscrolling!</string>
     <string name="exercises_done_count">0</string>
+    <string name="timer_count">0.00</string>
+    <string name="remaining_time_left">Your unblocked time left:</string>
+    <string name="blocked_apps_count">100000</string>
     <string name="device_connection">Device connection status:</string>
     <string name="device_connected">Connected</string>
     <string name="device_error">Error</string>
+    <string name="time_blocked_count_start">10pm</string>
+    <string name="to">-</string>
+    <string name="time_blocked_count_end">3am</string>
+    <string name="text_time_blocked">Time Blocked:</string>
 
 
 </resources>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="textViewBigLightMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">40sp</item>
+        <item name="android:padding">10dp</item>
+    </style>
+
+    <style name="textViewBigDarkMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor"> @color/text_colour_dark_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">40sp</item>
+        <item name="android:padding">10dp</item>
+    </style>
+
+    <style name="textViewMediumLightMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="textViewMediumDarkMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+
+
+    <style name="textViewSmallLightMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="textViewSmallDarkMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="editTextFontLightMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:textColorHint">@color/text_hint_light_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:padding">20dp</item>
+        <item name="android:background">@drawable/text_border_light_mode</item>
+    </style>
+
+    <style name="editTextFontDarkMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:textColorHint">@color/text_hint_dark_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:padding">20dp</item>
+        <item name="android:background">@drawable/text_border_dark_mode</item>
+    </style>
+
+    <style name="editTextFontBigLightMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:textColorHint">@color/text_hint_light_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">40sp</item>
+        <item name="android:background">@drawable/text_border_light_mode</item>
+    </style>
+
+    <style name="editTextFontBigDarkMode">
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:textColorHint">@color/text_hint_dark_mode</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textSize">40sp</item>
+        <item name="android:background">@drawable/text_border_dark_mode</item>
+    </style>
+
+
+    <style name="ButtonLightMode">
+        <item name="android:backgroundTint">@color/highlight_3</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+        <item name="android:textAlignment">center</item>
+
+        <item name="android:soundEffectsEnabled">false</item>
+    </style>
+
+    <style name="ButtonDarkMode">
+        <item name="android:backgroundTint">@color/highlight_4</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:soundEffectsEnabled">false</item>
+    </style>
+
+    <style name="ButtonBorderlessLightMode" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:soundEffectsEnabled">false</item>
+    </style>
+
+    <style name="ButtonBorderlessDarkMode" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:soundEffectsEnabled">false</item>
+    </style>
+
+    <style name="ImageViewCircular">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">25%</item>
+    </style>
+
+    <style name="SpinnerMediumLightMode" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@color/transparent</item>
+        <item name="android:textColor">@color/text_colour_light_mode</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:popupBackground">@color/highlight_3</item>
+    </style>
+
+    <style name="SpinnerMediumDarkMode" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@color/transparent</item>
+        <item name="android:textColor">@color/text_colour_dark_mode</item>
+        <item name="android:fontFamily">@font/DefaultFont</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:popupBackground">@color/highlight_4</item>
+    </style>
+</resources>
