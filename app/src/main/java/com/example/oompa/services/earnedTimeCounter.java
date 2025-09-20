@@ -124,6 +124,16 @@ public class earnedTimeCounter {
         return isCountingDown;
     }
 
+    /** Check if the countdown has finished */
+    public boolean isCountdownFinished() {
+        // Update elapsed time in case countdown is active
+        if (isCountingDown) {
+            updateElapsedTime();
+        }
+        return earnedTime <= 0;
+    }
+
+
     /** Get formatted time string */
     public String getFormattedTime() {
         long totalSeconds = getEarnedTime() / 1000;
