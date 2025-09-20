@@ -7,7 +7,6 @@ import android.view.accessibility.AccessibilityEvent;
 
 import com.example.oompa.MainActivity;
 import com.example.oompa.classes.LockedApp;
-import com.example.oompa.services.earnedTimeCounter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +14,9 @@ import java.util.Map;
 public class AppBlockerService extends AccessibilityService {
 
     private Map<String, LockedApp> lockedApps;
+
+    // --- Earned Time Counter ---
+    private earnedTimeCounter timeCounter;
 
     // --- Daily full lock schedule ---
     private long dailyFullLock;      // start of full lock period
@@ -28,6 +30,7 @@ public class AppBlockerService extends AccessibilityService {
     private long exerciseUnlockEnd;
     private int maxDailyExerciseUnlocks = 2;
     private int exerciseUnlocksUsed = 0;
+    private boolean isExerciseUnlockActive = false; // Track if we're in exercise unlock mode
 
     private Handler handler = new Handler();
 
@@ -35,6 +38,9 @@ public class AppBlockerService extends AccessibilityService {
     public void onServiceConnected() {
         super.onServiceConnected();
         lockedApps = new HashMap<>();
+
+        // Initialize earned time counter with context for persistence
+        timeCounter = new earnedTimeCounter(this);
 
         // Start periodic lock checking
         handler.post(lockChecker);
@@ -49,6 +55,7 @@ public class AppBlockerService extends AccessibilityService {
             if(app != null && app.isActiveLocked()) {
                 // Redirect to lock screen
                 Intent i = new Intent(this, MainActivity.class);
+                i.putExtra("blockedApp", packageName);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
             }
@@ -82,19 +89,41 @@ public class AppBlockerService extends AccessibilityService {
         }
     }
 
-    /** Start an exercise-based unlock period */
+    /** Start an exercise-based unlock period using earnedTimeCounter */
     public void startExerciseUnlock(long earnedMillis) {
         if(exerciseUnlocksUsed < maxDailyExerciseUnlocks) {
-            exerciseUnlockStart = System.currentTimeMillis();
-            exerciseUnlockEnd = exerciseUnlockStart + earnedMillis;
-            exerciseUnlocksUsed++;
-            updateActiveLocks();
+            // Add time to the counter if provided
+            if (earnedMillis > 0) {
+                timeCounter.addTime(earnedMillis);
+            }
+
+            // Start exercise unlock period using earned time
+            if (timeCounter.hasTime()) {
+                exerciseUnlockStart = System.currentTimeMillis();
+                exerciseUnlockEnd = exerciseUnlockStart + timeCounter.getEarnedTime();
+                exerciseUnlocksUsed++;
+                isExerciseUnlockActive = true;
+                updateActiveLocks();
+            }
         }
+    }
+
+    /** Start exercise unlock using existing earned time */
+    public void startExerciseUnlockWithEarnedTime() {
+        startExerciseUnlock(0); // Use existing earned time
+    }
+
+    /** Add earned time without starting unlock period */
+    public void addEarnedTime(long earnedMillis) {
+        timeCounter.addTime(earnedMillis);
     }
 
     /** End an exercise unlock early */
     public void endExerciseUnlock() {
         exerciseUnlockEnd = System.currentTimeMillis();
+        isExerciseUnlockActive = false;
+        // Reset the timer since unlock ended early
+        timeCounter.reset();
         updateActiveLocks();
     }
 
@@ -106,43 +135,80 @@ public class AppBlockerService extends AccessibilityService {
 
     /** Check if we are in an exercise unlock period */
     private boolean isExerciseUnlocked() {
+        if (!isExerciseUnlockActive) return false;
+
         long currentTime = System.currentTimeMillis();
-        return currentTime >= exerciseUnlockStart && currentTime < exerciseUnlockEnd;
+        boolean timeBasedUnlock = currentTime >= exerciseUnlockStart && currentTime < exerciseUnlockEnd;
+
+        // Also check if earned time counter still has time
+        boolean hasEarnedTime = timeCounter.hasTime();
+
+        return timeBasedUnlock && hasEarnedTime;
     }
 
     /** Update active locks on all apps */
     public void updateActiveLocks() {
         long currentTime = System.currentTimeMillis();
-        boolean dailyLock = isDailyLocked();
+
         boolean exerciseUnlock = isExerciseUnlocked();
+        boolean dailyLock = isDailyLocked();
 
         // Reset exercise unlocks if we passed the daily full unlock period
-        if(currentTime >= dailyFullUnlock) {
+        if (currentTime >= dailyFullUnlock) {
             exerciseUnlocksUsed = 0;
             exerciseUnlockStart = 0;
             exerciseUnlockEnd = 0;
+            isExerciseUnlockActive = false;
         }
 
-        for(LockedApp app : lockedApps.values()) {
-            if(dailyLock) {
-                app.setActiveLocked(true); // daily lock enforced
-            } else if(exerciseUnlock) {
+        // If exercise unlock period ended, mark as inactive
+        if (isExerciseUnlockActive && currentTime >= exerciseUnlockEnd) {
+            isExerciseUnlockActive = false;
+        }
+
+        for (LockedApp app : lockedApps.values()) {
+            // normal unlocked state
+            if (exerciseUnlock) {
                 app.setActiveLocked(false); // temporary unlock for exercise
-            } else {
-                app.setActiveLocked(false); // normal unlocked state
-            }
+            } else app.setActiveLocked(dailyLock); // enforce daily lock
         }
     }
-
 
     /** Runnable to periodically check lock status */
     private Runnable lockChecker = new Runnable() {
         @Override
         public void run() {
+            // If we're in an active exercise unlock, countdown the timer
+            if (isExerciseUnlockActive) {
+                timeCounter.countdown();
+
+                // Check if earned time ran out
+                if (!timeCounter.hasTime()) {
+                    // Time expired - end exercise unlock
+                    isExerciseUnlockActive = false;
+                    exerciseUnlockEnd = System.currentTimeMillis();
+                }
+            }
+
             updateActiveLocks();
-            handler.postDelayed(this, 2000); // check every 2 seconds
+
+            // Check every second during exercise unlock, every 2 seconds otherwise
+            long delay = isExerciseUnlockActive ? 1000 : 2000;
+            handler.postDelayed(this, delay);
         }
     };
+
+    // ------------------ Public Access Methods ------------------
+
+    /** Get the earned time counter for external access */
+    public earnedTimeCounter getTimeCounter() {
+        return timeCounter;
+    }
+
+    /** Check if exercise unlock is currently active */
+    public boolean isExerciseUnlockCurrentlyActive() {
+        return isExerciseUnlockActive;
+    }
 
     // ------------------ Getters ------------------
 
@@ -152,5 +218,3 @@ public class AppBlockerService extends AccessibilityService {
     public int getLockUnlockDurationHours() { return lockUnlockDurationHours; }
     public int getExerciseUnlocksUsed() { return exerciseUnlocksUsed; }
 }
-
-

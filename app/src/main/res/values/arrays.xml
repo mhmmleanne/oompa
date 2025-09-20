@@ -20,12 +20,12 @@
         <item>Snapchat</item>
     </array>
     <array name="category_package_array">
-        <item>Instagram</item>
-        <item>Tiktok</item>
-        <item>Youtube</item>
-        <item>Facebook</item>
-        <item>X</item>
-        <item>Reddit</item>
-        <item>Snapchat</item>
+        <item>com.instagram.android</item>
+        <item>com.ss.android.ugc.tiktok</item>
+        <item>com.google.android.youtube</item>
+        <item>com.facebook.katana</item>
+        <item>com.twitter.android</item>
+        <item>com.reddit.frontpage</item>
+        <item>com.snapchat.android</item>
     </array>
 </resources>
