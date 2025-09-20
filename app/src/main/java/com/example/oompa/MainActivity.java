@@ -125,7 +125,10 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             long earnedTime = timeCounter.getEarnedTime();
             if (earnedTime <= 0) {
                 remainingTime.setText("No time earned!");
+                startExercisingButton.setEnabled(true);
                 return;
+            } else{
+                startExercisingButton.setEnabled(false);
             }
 
             // Start countdown for unlocking apps
@@ -141,6 +144,7 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
             // Start UI countdown
             startUnlockCountdown();
+
         });
     }
     @Override
