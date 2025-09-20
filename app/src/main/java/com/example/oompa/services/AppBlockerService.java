@@ -236,18 +236,25 @@ public class AppBlockerService extends AccessibilityService {
         @Override
         public void run() {
             // Check persisted unlock time
-            long savedEndTime = preferenceManager.getUnlockTime();
-            if (savedEndTime > System.currentTimeMillis()) {
-                isExerciseUnlockActive = true;
-                //timeCounter.(savedEndTime - System.currentTimeMillis());
-                timeCounter.startCountdown();
+            long savedEndTime = preferenceManager.getUnlockTime(); // your new millis pref
+            long now = System.currentTimeMillis();
+
+            if (savedEndTime > now) {
+                if (!isExerciseUnlockActive) {
+                    // Calculate remaining time and set it in the counter
+                    long remaining = savedEndTime - now;
+                    timeCounter.reset();       // clear previous value
+                    timeCounter.addTime(remaining);  // set remaining time
+                    timeCounter.startCountdown();
+                    isExerciseUnlockActive = true;
+                }
             } else if (isExerciseUnlockActive) {
                 endExerciseUnlock();
             }
 
             // Normal countdown
             if (isExerciseUnlockActive && timeCounter.isCountingDown()) {
-                timeCounter.countdown();
+                timeCounter.countdown(); // update elapsed time
                 if (!timeCounter.hasTime()) {
                     endExerciseUnlock();
                 }
@@ -257,6 +264,7 @@ public class AppBlockerService extends AccessibilityService {
             handler.postDelayed(this, isExerciseUnlockActive ? 1000 : 2000);
         }
     };
+
 
 
     public earnedTimeCounter getTimeCounter() { return timeCounter; }
