@@ -3,6 +3,7 @@ package com.example.oompa.services;
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.os.Handler;
+import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.example.oompa.App;
@@ -20,9 +21,10 @@ public class AppBlockerService extends AccessibilityService {
     private earnedTimeCounter timeCounter;
 
     // --- Daily full lock schedule ---
-    private long dailyFullLock;      // start of full lock period
-    private long dailyFullUnlock;    // end of full lock period
-    private int lockUnlockDurationHours = 3;
+    private long dailyFullLock = System.currentTimeMillis();
+    private int lockUnlockDurationHours = 3;// start of full lock period
+    private long dailyFullUnlock = dailyFullLock + (lockUnlockDurationHours * 60 * 60 * 1000L);    // end of full lock period
+
     private long lastLockTimeSet;
     private static final long ONE_WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000;
 
@@ -60,6 +62,7 @@ public class AppBlockerService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             String packageName = (event.getPackageName() != null) ? event.getPackageName().toString() : "";
+            Log.d("YTC", packageName);
             App app = lockedApps.get(packageName);
 
             if(app != null && app.getSelected()) {

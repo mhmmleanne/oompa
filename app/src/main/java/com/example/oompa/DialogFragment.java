@@ -83,6 +83,7 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) {
                         blocker.addLockedApp(app);
+                        blocker.updateActiveLocks();
                     }
 
                 }
