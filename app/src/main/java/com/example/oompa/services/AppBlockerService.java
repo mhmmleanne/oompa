@@ -4,104 +4,111 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.view.accessibility.AccessibilityEvent;
 
-import com.example.oompa.MainActivity;
 import com.example.oompa.classes.LockedApp;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class AppBlockerService extends AccessibilityService {
+
     private Map<String, LockedApp> lockedApps;
-    private int lock_unlock_duration;
+    private int lockUnlockDurationHours;   // duration of lock in hours
 
     @Override
-    public void onServiceConnected(){
+    public void onServiceConnected() {
         super.onServiceConnected();
-
         lockedApps = new HashMap<>();
-        lock_unlock_duration = 3;
+        lockUnlockDurationHours = 3;  // default 3 hours
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event){
-        if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             String packageName = (event.getPackageName() != null) ? event.getPackageName().toString() : "";
-            //If app is locked, lock the screen
+
             LockedApp app = lockedApps.get(packageName);
-            if(app != null && app.isLocked() && isInlockPeriod(app)){
-                //TODO LOCKSCREEN ACTIVITY
-                Intent i = new Intent(this, MainActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(i);
+            if(app != null && app.isCurrentlyLocked()) {
+                // App is locked: trigger lock screen or block usage
+                // For backend purposes, we just log or handle state
+                handleLockedApp(app);
             }
         }
     }
 
     @Override
-    public void onInterrupt(){
+    public void onInterrupt() { }
 
+    // ------------------ Backend Methods ------------------
+
+    /** Handles logic when app is locked */
+    private void handleLockedApp(LockedApp app) {
+        // Placeholder: can start LockScreenActivity or log for backend
+        // e.g., Log.d("AppBlockerService", app.getAppName() + " is locked!");
     }
 
-    private boolean isInlockPeriod(LockedApp app){
-        //TODO Check current time vs lock/unlocktimes from SHARED PREFERENCES
-        //True app is locked, false otherwise
-        long currentTime = System.currentTimeMillis();
-        return currentTime >= app.getLockTime() && currentTime <= app.getUnlockTime();
+    /** Set lock duration in hours */
+    public void setLockUnlockDuration(int hours) {
+        this.lockUnlockDurationHours = hours;
     }
 
-    public void setLock_unlock_duration(int lock_unlock_duration){
-        this.lock_unlock_duration = lock_unlock_duration;
-    }
-
-    public void lockApp(String packageName,long lockTime){
+    /** Initial lock when user selects app for locking */
+    public void initialLock(String packageName) {
         LockedApp app = lockedApps.get(packageName);
-        if(app != null){
-            app.setLocked(true);
-            app.setLockTime(lockTime);
-            app.setUnlockTime(lockTime+lock_unlock_duration * 60 * 60 * 1000L);
+        long currentTime = System.currentTimeMillis();
+        if(app != null) {
+            app.setInitialLocked(true);
+            app.setLockTime(currentTime);
+            app.setUnlockTime(currentTime + lockUnlockDurationHours * 60 * 60 * 1000L);
         }
-
-
-
-    }
-    public void addApp(LockedApp app){
-        lockedApps.put(app.getPackageName(),app);
     }
 
-    public void removeApp(String packageName){
+    /** Updates active lock states dynamically based on current time */
+    public void updateActiveLocks() {
+        long now = System.currentTimeMillis();
+        for(LockedApp app : lockedApps.values()) {
+            boolean withinPeriod = now >= app.getLockTime() && now <= app.getUnlockTime();
+            app.setActiveLocked(withinPeriod);
+        }
+    }
+
+    /** Add a new app to the backend */
+    public void addApp(LockedApp app) {
+        lockedApps.put(app.getPackageName(), app);
+    }
+
+    /** Remove an app from the backend */
+    public void removeApp(String packageName) {
         lockedApps.remove(packageName);
     }
 
-    public void unlockApp(String packageName){
+    /** Unlock app manually */
+    public void unlockApp(String packageName) {
         LockedApp app = lockedApps.get(packageName);
-        if(app != null){
-            app.setLocked(false);
+        if(app != null) {
+            app.setActiveLocked(false);
         }
     }
 
-    public void lockApp(String packageName){
+    /** Lock app manually */
+    public void lockApp(String packageName) {
         LockedApp app = lockedApps.get(packageName);
-        if(app != null){
-            app.setLocked(true);
+        if(app != null) {
+            app.setActiveLocked(true);
         }
     }
 
-    public void unlockAllApps(){
-        for(LockedApp app : lockedApps.values()){
-            app.setLocked(false);
+    /** Unlock all apps */
+    public void unlockAllApps() {
+        for(LockedApp app : lockedApps.values()) {
+            app.setActiveLocked(false);
         }
     }
 
-    public void lockAllApps(){
-        for(LockedApp app : lockedApps.values()){
-            app.setLocked(true);
-        }
-    }
-
-    public void check_Outside_Lock_Duration(){
-        for(LockedApp app : lockedApps.values()){
-            //If app is outside of lock period
-            app.setLocked(isInlockPeriod(app));
+    /** Lock all apps */
+    public void lockAllApps() {
+        for(LockedApp app : lockedApps.values()) {
+            app.setActiveLocked(true);
         }
     }
 }
+
