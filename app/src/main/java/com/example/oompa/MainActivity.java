@@ -59,6 +59,9 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
     private long unlockTimeLeft; // milliseconds
     private boolean isUnlockActive = false;
+    private long leftoverTime = 0;  // leftover from previous unlock session
+    private Runnable unlockRunnable;
+
 
 
 
@@ -116,54 +119,68 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         });
 
         unlockAppsButton.setOnClickListener(v -> {
-            // Stop listening for exercise
             if (sensorManager != null) sensorManager.unregisterListener(this);
 
-            long earnedTime = timeCounter.getEarnedTime();
-            if (earnedTime <= 0) {
+            long newEarnedTime = timeCounter.getEarnedTime(); // only new earned from exercises
+            if (newEarnedTime <= 0) {
                 remainingTime.setText("No time earned!");
                 return;
             }
 
-            // disable start button while unlock is active
             startExercisingButton.setEnabled(false);
             startExercisingButton.setAlpha(0.5f);
 
-            // Start countdown for unlocking apps (UI side)
-            unlockTimeLeft = earnedTime;
+            // Combine leftover + new earned time
+            unlockTimeLeft = leftoverTime + newEarnedTime;
+            leftoverTime = 0;  // reset leftover
+
+            // Start countdown in earnedTimeCounter singleton (so service knows)
+            timeCounter.reset();          // consume all earned time
+            timeCounter.startCountdown(); // begin countdown with unlockTimeLeft
+
             isUnlockActive = true;
 
-            // Notify service (pass the millis explicitly)
             AppBlockerService blocker = AppBlockerService.getInstance();
             if (blocker != null) {
-                blocker.startExerciseUnlock(earnedTime);   // <-- pass millis
-            } else {
-                // Service not ready: persist pending unlock so service can pick it up on connect
+                blocker.startExerciseUnlock(unlockTimeLeft);
             }
 
-            // Do NOT reset the singleton/time here — let the service manage it
-            // timeCounter.reset();  <-- remove this line
-
-            // Start UI countdown
             startUnlockCountdown();
         });
+
+
 
     }
     @Override
     protected void onResume() {
         super.onResume();
         updateAppCount();
-        if (earnedTimeCounter.getInstance().isCountdownFinished()) {
-            startExercisingButton.setEnabled(true);
-            startExercisingButton.setAlpha(1f);
-        } else {
+
+        if (timeCounter.isCountingDown()) {
+            isUnlockActive = true;
+            unlockTimeLeft = timeCounter.getEarnedTime();
+
+            // Only start countdown if no existing Runnable is running
+            if (unlockRunnable == null) {
+                startUnlockCountdown();
+            }
+
             startExercisingButton.setEnabled(false);
             startExercisingButton.setAlpha(0.5f);
+        } else {
+            remainingTime.setText(timeCounter.getFormattedTime());
+            startExercisingButton.setEnabled(true);
+            startExercisingButton.setAlpha(1f);
         }
+
         if (accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
     }
+
+
+
+
 
 
     private void updateAppCount() {
@@ -208,7 +225,9 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                         "\nEarned Time: " + timeCounter.getFormattedTime();
 
         exerciseCountInfo.setText(info);
-        remainingTime.setText(timeCounter.getFormattedTime());
+        if (!isUnlockActive) {
+            remainingTime.setText(timeCounter.getFormattedTime());
+        }
     }
 
     @Override
@@ -223,15 +242,23 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     }
 
     private void startUnlockCountdown() {
-        handler.post(new Runnable() {
+        if (unlockRunnable != null) {
+            handler.removeCallbacks(unlockRunnable); // cancel previous
+        }
+
+        unlockRunnable = new Runnable() {
             @Override
             public void run() {
-                if (unlockTimeLeft > 0) {
+                if (isUnlockActive && unlockTimeLeft > 0) {
                     long minutes = unlockTimeLeft / 1000 / 60;
                     long seconds = (unlockTimeLeft / 1000) % 60;
                     remainingTime.setText(String.format("%02d:%02d", minutes, seconds));
 
                     unlockTimeLeft -= 1000;
+
+                    // decrement singleton
+                    timeCounter.countdown();
+
                     handler.postDelayed(this, 1000);
                 } else {
                     remainingTime.setText("00:00");
@@ -241,10 +268,18 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) blocker.endExerciseUnlock();
+
+                    leftoverTime = timeCounter.getEarnedTime();
+                    timeCounter.stopCountdown();
                 }
             }
-        });
+        };
+
+        handler.post(unlockRunnable);
     }
+
+
+
 
 
 }

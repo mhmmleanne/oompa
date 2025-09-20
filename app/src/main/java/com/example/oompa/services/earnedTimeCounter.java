@@ -41,13 +41,12 @@ public class earnedTimeCounter {
 
     /** Add earned time in milliseconds */
     public void addTime(long millis) {
-        // Only update elapsed time if we're currently counting down
-        if (isCountingDown) {
-            updateElapsedTime();
+        if (!isCountingDown) { // only add time if no active unlock
+            earnedTime += millis;
+            saveToPreferences();
         }
-        earnedTime += millis;
-        saveToPreferences();
     }
+
 
     /** Start countdown (call this when unlock period begins) */
     public void startCountdown() {
@@ -132,6 +131,17 @@ public class earnedTimeCounter {
         }
         return earnedTime <= 0;
     }
+    public void extendOrStartUnlock(long millis) {
+        // If countdown already active, extend it
+        if (isCountingDown) {
+            earnedTime += millis; // extend remaining unlock
+        } else if (earnedTime + millis > 0) {
+            earnedTime += millis;
+            startCountdown();
+        }
+        saveToPreferences();
+    }
+
 
 
     /** Get formatted time string */

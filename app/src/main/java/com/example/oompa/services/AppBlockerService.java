@@ -264,6 +264,17 @@ public class AppBlockerService extends AccessibilityService {
             handler.postDelayed(this, isExerciseUnlockActive ? 1000 : 2000);
         }
     };
+    public void startExerciseUnlockWithoutCountdown(long earnedMillis) {
+        if(exerciseUnlocksUsed < maxDailyExerciseUnlocks) {
+            exerciseUnlockStart = System.currentTimeMillis();
+            exerciseUnlockEnd = exerciseUnlockStart + earnedMillis;
+            exerciseUnlocksUsed++;
+            isExerciseUnlockActive = true;
+            updateActiveLocks();
+            // Do NOT start timeCounter countdown here
+        }
+    }
+
 
 
 
