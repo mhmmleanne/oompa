@@ -71,7 +71,7 @@ public class ExerciseCounter {
 
                         // 🔹 Award earned time
                         if (timeCounter != null) {
-                            timeCounter.addTime(1000);
+                            timeCounter.addTime(1000*60);
                         }
                     }
                     state = JumpState.ON_GROUND;

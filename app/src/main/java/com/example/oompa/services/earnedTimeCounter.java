@@ -7,12 +7,13 @@ public class earnedTimeCounter {
     private static final String PREFS_NAME = "EarnedTimePrefs";
     private static final String KEY_EARNED_TIME = "earnedTime";
     private static final String KEY_LAST_UPDATE = "lastUpdate";
+    private static final String KEY_IS_COUNTING_DOWN = "isCountingDown";
 
     private long earnedTime;   // remaining time in ms
     private long lastUpdate;   // last system time when countdown was updated
+    private boolean isCountingDown = false; // Only countdown when this is true
 
     private final SharedPreferences prefs;
-
     private static earnedTimeCounter instance;
 
     // 🔹 Private constructor
@@ -40,50 +41,101 @@ public class earnedTimeCounter {
 
     /** Add earned time in milliseconds */
     public void addTime(long millis) {
-        countdown();
+        // Only update elapsed time if we're currently counting down
+        if (isCountingDown) {
+            updateElapsedTime();
+        }
         earnedTime += millis;
         saveToPreferences();
     }
 
-    /** Countdown based on elapsed time */
+    /** Start countdown (call this when unlock period begins) */
+    public void startCountdown() {
+        if (!isCountingDown && earnedTime > 0) {
+            isCountingDown = true;
+            lastUpdate = System.currentTimeMillis();
+            saveToPreferences();
+        }
+    }
+
+    /** Stop countdown (call this when unlock period ends) */
+    public void stopCountdown() {
+        if (isCountingDown) {
+            updateElapsedTime(); // Update time before stopping
+            isCountingDown = false;
+            saveToPreferences();
+        }
+    }
+
+    /** Manual countdown (only call this during active unlock period) */
     public void countdown() {
+        if (isCountingDown) {
+            updateElapsedTime();
+            saveToPreferences();
+        }
+    }
+
+    /** Update elapsed time if countdown is active */
+    private void updateElapsedTime() {
+        if (!isCountingDown) return;
+
         long now = System.currentTimeMillis();
         long delta = now - lastUpdate;
 
         if (earnedTime > 0) {
             earnedTime -= delta;
-            if (earnedTime < 0) earnedTime = 0;
+            if (earnedTime < 0) {
+                earnedTime = 0;
+                isCountingDown = false; // Auto-stop when time runs out
+            }
         }
 
         lastUpdate = now;
-        saveToPreferences();
     }
 
-    /** Get remaining time */
+    /** Get remaining time WITHOUT automatically counting down */
     public long getEarnedTime() {
-        countdown();
+        // Only update if we're actively counting down
+        if (isCountingDown) {
+            updateElapsedTime();
+        }
         return earnedTime;
     }
 
     /** Reset counter */
     public void reset() {
         earnedTime = 0;
+        isCountingDown = false;
         lastUpdate = System.currentTimeMillis();
         saveToPreferences();
     }
 
-    /** Check if there is any earned time left */
+    /** Check if there is any earned time left WITHOUT automatically counting down */
     public boolean hasTime() {
-        countdown();
+        // Only update if we're actively counting down
+        if (isCountingDown) {
+            updateElapsedTime();
+        }
         return earnedTime > 0;
     }
 
-    /** Get formatted time string (MM:SS) */
+    /** Check if countdown is currently active */
+    public boolean isCountingDown() {
+        return isCountingDown;
+    }
+
+    /** Get formatted time string */
     public String getFormattedTime() {
-        long timeInSeconds = getEarnedTime() / 1000;
-        long minutes = timeInSeconds / 60;
-        long seconds = timeInSeconds % 60;
-        return String.format("%02d:%02d", minutes, seconds);
+        long totalSeconds = getEarnedTime() / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format("%02d:%02d", minutes, seconds);
+        }
     }
 
     /** Save state */
@@ -91,6 +143,7 @@ public class earnedTimeCounter {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putLong(KEY_EARNED_TIME, earnedTime);
         editor.putLong(KEY_LAST_UPDATE, lastUpdate);
+        editor.putBoolean(KEY_IS_COUNTING_DOWN, isCountingDown);
         editor.apply();
     }
 
@@ -98,6 +151,11 @@ public class earnedTimeCounter {
     private void loadFromPreferences() {
         earnedTime = prefs.getLong(KEY_EARNED_TIME, 0);
         lastUpdate = prefs.getLong(KEY_LAST_UPDATE, System.currentTimeMillis());
-        countdown(); // sync with real elapsed time
+        isCountingDown = prefs.getBoolean(KEY_IS_COUNTING_DOWN, false);
+
+        // If we were counting down when app was killed, update elapsed time
+        if (isCountingDown) {
+            updateElapsedTime();
+        }
     }
 }
