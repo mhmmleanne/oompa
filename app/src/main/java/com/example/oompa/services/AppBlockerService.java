@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.example.oompa.App;
 import com.example.oompa.MainActivity;
 import com.example.oompa.classes.LockedApp;
 
@@ -13,7 +14,7 @@ import java.util.Map;
 
 public class AppBlockerService extends AccessibilityService {
 
-    private Map<String, LockedApp> lockedApps;
+    private Map<String, App> lockedApps;
 
     // --- Earned Time Counter ---
     private earnedTimeCounter timeCounter;
@@ -34,25 +35,34 @@ public class AppBlockerService extends AccessibilityService {
 
     private Handler handler = new Handler();
 
+    private static AppBlockerService instance;
+
+    public static AppBlockerService getInstance() {
+        return instance;
+    }
+
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
+        instance = this; // 🔹 keep a static reference
         lockedApps = new HashMap<>();
-
-        // Initialize earned time counter with context for persistence
         timeCounter = new earnedTimeCounter(this);
-
-        // Start periodic lock checking
         handler.post(lockChecker);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        instance = null;
     }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             String packageName = (event.getPackageName() != null) ? event.getPackageName().toString() : "";
-            LockedApp app = lockedApps.get(packageName);
+            App app = lockedApps.get(packageName);
 
-            if(app != null && app.isActiveLocked()) {
+            if(app != null && app.getSelected()) {
                 // Redirect to lock screen
                 Intent i = new Intent(this, MainActivity.class);
                 i.putExtra("blockedApp", packageName);
@@ -68,7 +78,7 @@ public class AppBlockerService extends AccessibilityService {
     // ------------------ Backend Methods ------------------
 
     /** Add a locked app */
-    public void addLockedApp(LockedApp app) {
+    public void addLockedApp(App app) {
         lockedApps.put(app.getPackageName(), app);
     }
 
@@ -166,11 +176,11 @@ public class AppBlockerService extends AccessibilityService {
             isExerciseUnlockActive = false;
         }
 
-        for (LockedApp app : lockedApps.values()) {
+        for (App app : lockedApps.values()) {
             // normal unlocked state
             if (exerciseUnlock) {
-                app.setActiveLocked(false); // temporary unlock for exercise
-            } else app.setActiveLocked(dailyLock); // enforce daily lock
+                app.setSelected(false); // temporary unlock for exercise
+            } else app.setSelected(dailyLock); // enforce daily lock
         }
     }
 

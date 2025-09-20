@@ -5,6 +5,7 @@ import static android.view.View.VISIBLE;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,8 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.oompa.services.AppBlockerService;
+
 import java.util.ArrayList;
 
 public class DialogFragment extends androidx.fragment.app.DialogFragment implements RecycleViewInterface {
@@ -25,11 +28,11 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
     private Button confirmButton;
     private TextView titleText;
     private RecycleViewAdapter adapter;
-
     private DialogFragmentListener<App> listener;
+    private AppBlockerService blocker = new AppBlockerService();
 
     // 🔹 static list of apps
-    public static ArrayList<App> appArray = new ArrayList<>();
+    public static ArrayList<App> appArray;
 
 
     @Nullable
@@ -41,8 +44,8 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
 
         titleText = rootView.findViewById(R.id.select_group);
         titleText.setText(R.string.modify_blocked_apps);
-
         appView = rootView.findViewById(R.id.select_group_recycle);
+        appArray = new ArrayList<>();
         showAppList();
         adapter = new RecycleViewAdapter(getActivity(), appArray, this);
         appView.setAdapter(adapter);
@@ -63,7 +66,7 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
         }
     }
 
-    // 🔹 Toggle selected state when user clicks an item button
+    //  Toggle selected state when user clicks an item button
     @Override
     public void onButtonClick(int position) {
         appArray.get(position).setSelected(!appArray.get(position).getSelected());
@@ -73,8 +76,15 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
         confirmButton.setOnClickListener(v -> {
             if (listener != null) {
                 ArrayList<App> selectedApps = getSelectedApps();
+                Log.d("abc",selectedApps.toString());
                 for (App app : selectedApps) {
+                    Log.d("test", app.toString());
                     listener.onDataSelected(position, app);
+                    AppBlockerService blocker = AppBlockerService.getInstance();
+                    if (blocker != null) {
+                        blocker.addLockedApp(app);
+                    }
+
                 }
             }
             dismiss();
@@ -102,8 +112,8 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
         }
     }
     private void showAppList() {
-        String[] nameList = getResources().getStringArray(R.array.category_package_array);
-        String[] packageList = getResources().getStringArray(R.array.category_name_array);
+        String[] nameList = getResources().getStringArray(R.array.category_name_array);
+        String[] packageList = getResources().getStringArray(R.array.category_package_array);
         TypedArray imageArray = getResources().obtainTypedArray(R.array.category_item_array);
 
         for (int i = 0; i < nameList.length; i++) {

@@ -14,6 +14,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.oompa.classes.LockedApp;
+import com.example.oompa.services.AppBlockerService;
+
+import java.util.concurrent.locks.Lock;
+
 
 public class MainActivity extends AppCompatActivity implements DialogFragmentListener<App> {
 
@@ -37,7 +42,6 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
         blockedAppsButton = findViewById(R.id.modify_blocked_apps_button);
         appCount = findViewById(R.id.blocked_apps_count);
 
