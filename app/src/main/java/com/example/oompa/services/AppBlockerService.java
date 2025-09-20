@@ -7,6 +7,7 @@ import android.view.accessibility.AccessibilityEvent;
 
 import com.example.oompa.MainActivity;
 import com.example.oompa.classes.LockedApp;
+import com.example.oompa.services.earnedTimeCounter;
 
 import java.util.HashMap;
 import java.util.Map;
