@@ -19,4 +19,11 @@
     <color name="highlight_1">#6486b6</color>
     <color name="highlight_2">#62929E</color>
     <color name="highlight_5">#4D348F</color>
+
+
+    <color name="purple_200">#8D6B94</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
 </resources>

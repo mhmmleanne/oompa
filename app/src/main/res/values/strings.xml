@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">oompa</string>
     <string name="currently_blocked_apps">Number of apps currently being blocked:</string>
+    <string name="first_fragment_label">xx</string>
+    <string name="second_fragment_label">xx</string>
     <string name="unlock_app">Unlock Apps Now</string>
     <string name="start_exercise">Start Exercising</string>
     <string name="exercises_done">Exercises done so far: </string>
