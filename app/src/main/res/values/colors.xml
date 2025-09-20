@@ -14,11 +14,11 @@
     <color name="text_hint_dark_mode">#2C2C2C</color>
 
 
-    <color name="highlight_3">#C7AAD3</color>
-    <color name="highlight_4">#8B6D94</color>
-    <color name="highlight_1">#6486b6</color>
-    <color name="highlight_2">#62929E</color>
-    <color name="highlight_5">#4D348F</color>
+    <color name="highlight_3">#e7e5d9</color>
+    <color name="highlight_4">#eed4bd</color>
+    <color name="highlight_1">#c2c1ad</color>
+    <color name="highlight_2">#eccca3</color>
+    <color name="highlight_5">#ddc3b2</color>
 
 
     <color name="purple_200">#8D6B94</color>
