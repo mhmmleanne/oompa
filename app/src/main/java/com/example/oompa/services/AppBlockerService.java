@@ -16,6 +16,8 @@ public class AppBlockerService extends AccessibilityService {
     private Map<String, LockedApp> lockedApps;
     private int lockUnlockDurationHours;   // duration of lock in hours
 
+    private long lastLockTimeSet;
+    private static final long ONE_WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000;
     private long lockingTime;
     private long unlockingTime;
 
@@ -50,8 +52,16 @@ public class AppBlockerService extends AccessibilityService {
         this.lockUnlockDurationHours = hours;
     }
 
+    public boolean canChangeLockTime(){
+        long currentTime = System.currentTimeMillis();
+        return currentTime-lastLockTimeSet < ONE_WEEK_MILLIS;
+    }
+
     public void setLockingTime(long time ){
-        this.lockingTime = time;
+        if (canChangeLockTime()) {
+            this.lockingTime = time;
+            setUnlockingTime();
+        }
     }
 
     public void setUnlockingTime(){
@@ -59,7 +69,7 @@ public class AppBlockerService extends AccessibilityService {
     }
 
     public boolean isLockingPeriod(){
-        long currentTime = new Date().getTime();
+        long currentTime = System.currentTimeMillis();
         return (currentTime >= this.lockingTime && currentTime < this.unlockingTime);
     }
     public void addLockedApp(LockedApp app){
@@ -71,9 +81,5 @@ public class AppBlockerService extends AccessibilityService {
             app.setActiveLocked(locking);
         }
     }
-
-
-
-
 }
 

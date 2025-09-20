@@ -23,7 +23,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name="com.example.oompa.services.AppBlockerService" />
+
     </application>
 
 </manifest>
