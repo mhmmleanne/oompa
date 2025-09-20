@@ -8,29 +8,44 @@ public class earnedTimeCounter {
     private static final String KEY_EARNED_TIME = "earnedTime";
     private static final String KEY_LAST_UPDATE = "lastUpdate";
 
-    private long earnedTime;       // remaining time in milliseconds
-    private long lastUpdate;       // last system time when countdown was updated
-    private Context context;
+    private long earnedTime;   // remaining time in ms
+    private long lastUpdate;   // last system time when countdown was updated
 
-    public earnedTimeCounter() {
-        this.earnedTime = 0;
-        this.lastUpdate = System.currentTimeMillis();
+    private final SharedPreferences prefs;
+
+    private static earnedTimeCounter instance;
+
+    // 🔹 Private constructor
+    private earnedTimeCounter(Context context) {
+        prefs = context.getApplicationContext()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        loadFromPreferences();
     }
 
-    public earnedTimeCounter(Context context) {
-        this.context = context;
-        loadFromPreferences();
+    // 🔹 Get singleton instance with context
+    public static synchronized earnedTimeCounter getInstance(Context context) {
+        if (instance == null) {
+            instance = new earnedTimeCounter(context);
+        }
+        return instance;
+    }
+
+    // 🔹 Get existing instance (must call getInstance(context) once first)
+    public static earnedTimeCounter getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("earnedTimeCounter not initialized. Call getInstance(context) first.");
+        }
+        return instance;
     }
 
     /** Add earned time in milliseconds */
     public void addTime(long millis) {
-        // First update countdown so we don't overwrite elapsed time
         countdown();
         earnedTime += millis;
         saveToPreferences();
     }
 
-    /** Call periodically when the user is active */
+    /** Countdown based on elapsed time */
     public void countdown() {
         long now = System.currentTimeMillis();
         long delta = now - lastUpdate;
@@ -46,7 +61,7 @@ public class earnedTimeCounter {
 
     /** Get remaining time */
     public long getEarnedTime() {
-        countdown();  // update before returning
+        countdown();
         return earnedTime;
     }
 
@@ -71,29 +86,18 @@ public class earnedTimeCounter {
         return String.format("%02d:%02d", minutes, seconds);
     }
 
-    /** Save state to SharedPreferences */
+    /** Save state */
     private void saveToPreferences() {
-        if (context != null) {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putLong(KEY_EARNED_TIME, earnedTime);
-            editor.putLong(KEY_LAST_UPDATE, lastUpdate);
-            editor.apply();
-        }
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong(KEY_EARNED_TIME, earnedTime);
+        editor.putLong(KEY_LAST_UPDATE, lastUpdate);
+        editor.apply();
     }
 
-    /** Load state from SharedPreferences */
+    /** Load state */
     private void loadFromPreferences() {
-        if (context != null) {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            earnedTime = prefs.getLong(KEY_EARNED_TIME, 0);
-            lastUpdate = prefs.getLong(KEY_LAST_UPDATE, System.currentTimeMillis());
-
-            // Update time based on elapsed time since last save
-            countdown();
-        } else {
-            this.earnedTime = 0;
-            this.lastUpdate = System.currentTimeMillis();
-        }
+        earnedTime = prefs.getLong(KEY_EARNED_TIME, 0);
+        lastUpdate = prefs.getLong(KEY_LAST_UPDATE, System.currentTimeMillis());
+        countdown(); // sync with real elapsed time
     }
 }
