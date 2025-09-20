@@ -89,10 +89,6 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
 
 
-
-        // Add test blocking button (you'll need to add this to your layout)
-        // testBlockingButton = findViewById(R.id.test_blocking_button);
-
         // Start the service
         Intent intent = new Intent(this, AppBlockerService.class);
         startService(intent);
@@ -125,7 +121,6 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             long earnedTime = timeCounter.getEarnedTime();
             if (earnedTime <= 0) {
                 remainingTime.setText("No time earned!");
-                startExercisingButton.setEnabled(true);
                 return;
             } else{
                 startExercisingButton.setEnabled(false);
@@ -150,12 +145,19 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     @Override
     protected void onResume() {
         super.onResume();
-        // Update count when activity resumes
         updateAppCount();
+        if (earnedTimeCounter.getInstance().isCountdownFinished()) {
+            startExercisingButton.setEnabled(true);
+            startExercisingButton.setAlpha(1f);
+        } else {
+            startExercisingButton.setEnabled(false);
+            startExercisingButton.setAlpha(0.5f);
+        }
         if (accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
     }
+
 
     private void updateAppCount() {
         AppBlockerService blocker = AppBlockerService.getInstance();
@@ -227,11 +229,15 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                 } else {
                     remainingTime.setText("00:00");
                     isUnlockActive = false;
+                    startExercisingButton.setEnabled(true);
+                    startExercisingButton.setAlpha(1f);
+
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) blocker.endExerciseUnlock();
                 }
             }
         });
     }
+
 
 }
