@@ -101,17 +101,27 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
             throw new RuntimeException(context + " must implement DialogFragmentListener");
         }
     }
-
     private void showAppList() {
         String[] nameList = getResources().getStringArray(R.array.category_package_array);
         String[] packageList = getResources().getStringArray(R.array.category_name_array);
         TypedArray imageArray = getResources().obtainTypedArray(R.array.category_item_array);
 
-
         for (int i = 0; i < nameList.length; i++) {
-            int imageResId = imageArray.getResourceId(i, 0);
-            appArray.add(new App(packageList[i], nameList[i], false, imageResId));
+            boolean exists = false;
+            for (App app : appArray) {
+                if (app.getPackageName().equals(nameList[i])) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists) {
+                int imageResId = imageArray.getResourceId(i, 0);
+                appArray.add(new App(packageList[i], nameList[i], false, imageResId));
+            }
         }
+
         imageArray.recycle();
     }
+
 }

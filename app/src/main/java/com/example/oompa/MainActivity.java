@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat;
 public class MainActivity extends AppCompatActivity implements DialogFragmentListener<App> {
 
     DialogFragment dialogFragment;
+    TextView appCount;
     Button blockedAppsButton;
     Button blockedTimingButton;
     Button unlockAppsButton;
@@ -37,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         });
 
         blockedAppsButton = findViewById(R.id.modify_blocked_apps_button);
+        appCount = findViewById(R.id.blocked_apps_count);
 
         blockedAppsButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -52,12 +55,15 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     @Override
     public void onDataSelected(int position, App app) {
         // Loop through all items in your static list
+        int count = 0;
         for (int i = 0; i < appArray.size(); i++) {
             App current = appArray.get(i);
             if (current.getSelected()) {
+                count += 1;
                 Log.d("MainActivity", "Selected: " + current.getAppName() + " at pos " + i);
             }
         }
+        appCount.setText(String.valueOf(count));
     }
 
 
