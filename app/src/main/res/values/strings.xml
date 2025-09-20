@@ -13,7 +13,7 @@
     <string name="exercises_done_count">0</string>
     <string name="timer_count">0.00</string>
     <string name="remaining_time_left">Your unblocked time left:</string>
-    <string name="blocked_apps_count">100000</string>
+    <string name="blocked_apps_count">0</string>
     <string name="device_connection">Device connection status:</string>
     <string name="device_connected">Connected</string>
     <string name="device_error">Error</string>

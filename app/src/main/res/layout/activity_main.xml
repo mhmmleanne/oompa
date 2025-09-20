@@ -5,12 +5,14 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/background4"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/blocked_timing_div"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="20dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -80,6 +82,7 @@
         android:id="@+id/blocked_apps_div"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="20dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/blocked_timing_div"
@@ -90,7 +93,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/currently_blocked_apps"
-
+            android:layout_margin="10dp"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -126,16 +129,20 @@
         android:id="@+id/instructions_div"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:padding="10dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/blocked_apps_div"
-        app:layout_constraintBottom_toTopOf="@id/action_buttons_div">
+        app:layout_constraintBottom_toTopOf="@id/action_buttons_div"
+        android:background="@drawable/text_border_dark_mode">
 
         <TextView
             android:id="@+id/instructions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/instructions"
+            android:layout_margin="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -169,6 +176,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/remaining_time_left"
+            android:layout_margin="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/exercises_count"
@@ -193,6 +201,7 @@
         android:id="@+id/action_buttons_div"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="20dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/instructions_div"
         app:layout_constraintBottom_toBottomOf="parent"

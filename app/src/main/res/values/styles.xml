@@ -86,17 +86,16 @@
 
 
     <style name="ButtonLightMode">
-        <item name="android:backgroundTint">@color/highlight_3</item>
+        <item name="android:backgroundTint">@color/black</item>
         <item name="android:fontFamily">@font/defaultfont</item>
         <item name="android:textColor">@color/text_colour_dark_mode</item>
         <item name="android:layout_gravity">center_horizontal</item>
         <item name="android:textAlignment">center</item>
-
         <item name="android:soundEffectsEnabled">false</item>
     </style>
 
     <style name="ButtonDarkMode">
-        <item name="android:backgroundTint">@color/highlight_4</item>
+        <item name="android:backgroundTint">@color/black</item>
         <item name="android:fontFamily">@font/defaultfont</item>
         <item name="android:textColor">@color/text_colour_dark_mode</item>
         <item name="android:layout_gravity">center_horizontal</item>
