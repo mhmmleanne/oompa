@@ -16,6 +16,7 @@ import com.google.gson.reflect.TypeToken;
 public class PreferenceManager {
     private static final String PREF_NAME = "MyAppPreferences";
     private static final String KEY_LOCKED_APPS = "locked_apps";
+    private static final String KEY_UNLOCK_TIME = "unlock_time_millis";
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
@@ -74,4 +75,23 @@ public class PreferenceManager {
         }
         return false;
     }
+
+    /** Save unlock time in milliseconds */
+    public void saveUnlockTime(long millis) {
+        editor.putLong(KEY_UNLOCK_TIME, millis);
+        editor.apply();
+    }
+
+    /** Get unlock time in milliseconds (default 0 if none) */
+    public long getUnlockTime() {
+        return sharedPreferences.getLong(KEY_UNLOCK_TIME, 0L);
+    }
+
+    /** Clear unlock time (reset to 0) */
+    public void clearUnlockTime() {
+        editor.remove(KEY_UNLOCK_TIME);
+        editor.apply();
+    }
+
+
 }

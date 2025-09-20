@@ -26,7 +26,7 @@ public class AppBlockerService extends AccessibilityService {
     private long dailyFullLock = System.currentTimeMillis();
     private int lockUnlockDurationHours = 3;// start of full lock period
     private long dailyFullUnlock = dailyFullLock + (lockUnlockDurationHours * 60 * 60 * 1000L);    // end of full lock period
-
+    private boolean isExerciseUnlockActive = false;
     private long lastLockTimeSet;
     private static final long ONE_WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000;
 
@@ -35,7 +35,6 @@ public class AppBlockerService extends AccessibilityService {
     private long exerciseUnlockEnd;
     private int maxDailyExerciseUnlocks = 2;
     private int exerciseUnlocksUsed = 0;
-    private boolean isExerciseUnlockActive = false; // Track if we're in exercise unlock mode
 
     private Handler handler = new Handler();
     private static AppBlockerService instance;
@@ -118,14 +117,6 @@ public class AppBlockerService extends AccessibilityService {
     }
 
     private boolean shouldBlockApp(String packageName) {
-        App app = lockedApps.get(packageName);
-        if (app == null) return false;
-
-        // Only check if app is selected
-        return app.getSelected();
-    }
-
-    /*private boolean shouldBlockApp(String packageName) {
         // Check if app is in locked list
         App app = lockedApps.get(packageName);
         if (app == null) {
@@ -133,17 +124,16 @@ public class AppBlockerService extends AccessibilityService {
         }
 
         // Check current lock status based on time rules
-        boolean dailyLock = isDailyLocked();
-        boolean exerciseUnlock = isExerciseUnlocked();
+
+        boolean exerciseUnlock = isExerciseUnlockActive;
 
         Log.d("AppBlocker", "App: " + packageName +
-                ", DailyLock: " + dailyLock +
                 ", ExerciseUnlock: " + exerciseUnlock +
                 ", Selected: " + app.getSelected());
 
         // Block if it's daily lock time and not in exercise unlock period
-        return dailyLock && !exerciseUnlock && app.getSelected();
-    }*/
+        return !exerciseUnlock && app.getSelected();
+    }
 
     @Override
     public void onInterrupt() { }
@@ -200,7 +190,8 @@ public class AppBlockerService extends AccessibilityService {
     public void endExerciseUnlock() {
         exerciseUnlockEnd = System.currentTimeMillis();
         isExerciseUnlockActive = false;
-        timeCounter.stopCountdown(); // 🔹 STOP countdown here
+        timeCounter.stopCountdown(); //
+        preferenceManager.clearUnlockTime();
         updateActiveLocks();
         Log.d("AppBlockerService", "Exercise unlock ended");
     }
@@ -213,31 +204,60 @@ public class AppBlockerService extends AccessibilityService {
         }
     }
 
+    public void startExerciseUnlock(long earnedMillis) {
+        if (exerciseUnlocksUsed < maxDailyExerciseUnlocks) {
+            if (earnedMillis > 0) {
+                timeCounter.addTime(earnedMillis);     // add to the service's counter
+            }
+
+            if (timeCounter.hasTime()) {
+                // Ensure the service-side counter actually counts down
+                timeCounter.startCountdown();
+
+                exerciseUnlockStart = System.currentTimeMillis();
+                exerciseUnlockEnd = exerciseUnlockStart + timeCounter.getEarnedTime();
+                preferenceManager.saveUnlockTime(exerciseUnlockEnd);
+                exerciseUnlocksUsed++;
+                isExerciseUnlockActive = true;
+                updateActiveLocks();
+
+                Log.d("AppBlockerService", "Exercise unlock started for " + timeCounter.getEarnedTime() + " ms");
+            } else {
+                Log.d("AppBlockerService", "No earned time in service, cannot start unlock");
+            }
+        } else {
+            Log.d("AppBlockerService", "Max exercise unlocks used");
+        }
+    }
+
+
     /** Periodically refresh locks and check countdown */
     private Runnable lockChecker = new Runnable() {
         @Override
         public void run() {
-            // If exercise unlock is active, manually call countdown
-            if (isExerciseUnlockActive && timeCounter.isCountingDown()) {
-                timeCounter.countdown(); // 🔹 Only countdown when unlock is active
+            // Check persisted unlock time
+            long savedEndTime = preferenceManager.getUnlockTime();
+            if (savedEndTime > System.currentTimeMillis()) {
+                isExerciseUnlockActive = true;
+                //timeCounter.(savedEndTime - System.currentTimeMillis());
+                timeCounter.startCountdown();
+            } else if (isExerciseUnlockActive) {
+                endExerciseUnlock();
+            }
 
-                // Check if time expired
+            // Normal countdown
+            if (isExerciseUnlockActive && timeCounter.isCountingDown()) {
+                timeCounter.countdown();
                 if (!timeCounter.hasTime()) {
-                    Log.d("AppBlockerService", "Earned time expired - ending exercise unlock");
-                    endExerciseUnlock(); // This will stop the countdown
-                } else {
-                    // Log current time for debugging
-                    Log.d("AppBlockerService", "Time remaining: " + timeCounter.getFormattedTime());
+                    endExerciseUnlock();
                 }
             }
 
             updateActiveLocks();
-
-            // Check every second during unlock, every 2 seconds otherwise
-            long delay = isExerciseUnlockActive ? 1000 : 2000;
-            handler.postDelayed(this, delay);
+            handler.postDelayed(this, isExerciseUnlockActive ? 1000 : 2000);
         }
     };
+
 
     public earnedTimeCounter getTimeCounter() { return timeCounter; }
     public boolean isExerciseUnlockActive() { return isExerciseUnlockActive; }

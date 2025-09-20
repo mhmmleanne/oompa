@@ -3,6 +3,7 @@ package com.example.oompa;
 import static com.example.oompa.DialogFragment.appArray;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -122,25 +123,31 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             if (earnedTime <= 0) {
                 remainingTime.setText("No time earned!");
                 return;
-            } else{
-                startExercisingButton.setEnabled(false);
             }
 
-            // Start countdown for unlocking apps
+            // disable start button while unlock is active
+            startExercisingButton.setEnabled(false);
+            startExercisingButton.setAlpha(0.5f);
+
+            // Start countdown for unlocking apps (UI side)
             unlockTimeLeft = earnedTime;
             isUnlockActive = true;
 
-            // Reset earned time so exercise won't interfere
-            timeCounter.reset();
-
-            // Notify service
+            // Notify service (pass the millis explicitly)
             AppBlockerService blocker = AppBlockerService.getInstance();
-            if (blocker != null) blocker.startExerciseUnlockWithEarnedTime();
+            if (blocker != null) {
+                blocker.startExerciseUnlock(earnedTime);   // <-- pass millis
+            } else {
+                // Service not ready: persist pending unlock so service can pick it up on connect
+            }
+
+            // Do NOT reset the singleton/time here — let the service manage it
+            // timeCounter.reset();  <-- remove this line
 
             // Start UI countdown
             startUnlockCountdown();
-
         });
+
     }
     @Override
     protected void onResume() {
