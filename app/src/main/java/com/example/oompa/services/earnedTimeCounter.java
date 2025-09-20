@@ -17,7 +17,7 @@ public class earnedTimeCounter {
     private static earnedTimeCounter instance;
 
     // 🔹 Private constructor
-    private earnedTimeCounter(Context context) {
+    earnedTimeCounter(Context context) {
         prefs = context.getApplicationContext()
                 .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         loadFromPreferences();

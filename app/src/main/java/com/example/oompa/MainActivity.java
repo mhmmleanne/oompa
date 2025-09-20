@@ -2,6 +2,7 @@ package com.example.oompa;
 
 import static com.example.oompa.DialogFragment.appArray;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -17,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.oompa.classes.LockedApp;
 import com.example.oompa.services.AppBlockerService;
+import com.example.oompa.services.PreferenceManager;
 import com.example.oompa.services.earnedTimeCounter;
 
 import android.content.Context;
@@ -27,6 +29,7 @@ import android.hardware.SensorManager;
 
 
 
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 
 
@@ -38,8 +41,11 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     Button blockedTimingButton;
     Button unlockAppsButton;
     Button startExercisingButton;
+    Button testBlockingButton; // Add test button
     RecycleViewAdapter adapter;
 
+    private PreferenceManager preferenceManager;
+    private Handler handler = new Handler();
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private TextView textView;
@@ -50,7 +56,9 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     private earnedTimeCounter timeCounter;
     private ExerciseCounter exerciseCounter;
 
-    private Handler handler = new Handler();
+    private long unlockTimeLeft; // milliseconds
+    private boolean isUnlockActive = false;
+
 
 
     @Override
@@ -63,6 +71,10 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Initialize PreferenceManager
+        preferenceManager = new PreferenceManager(this);
+
         blockedAppsButton = findViewById(R.id.modify_blocked_apps_button);
         appCount = findViewById(R.id.blocked_apps_count);
         startExercisingButton = findViewById(R.id.start_exercise_button);
@@ -78,11 +90,22 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
 
 
+        // Add test blocking button (you'll need to add this to your layout)
+        // testBlockingButton = findViewById(R.id.test_blocking_button);
+
+        // Start the service
+        Intent intent = new Intent(this, AppBlockerService.class);
+        startService(intent);
+
+        // Update UI with initial count
+        updateAppCount();
+
+        // Set up button click listener
         blockedAppsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dialogFragment = new DialogFragment();
-                dialogFragment.show(getSupportFragmentManager(), "DialogFragment");
+                dialogFragment.show(getSupportFragmentManager(),"DialogFragment");
 
             }
         });
@@ -96,53 +119,72 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         });
 
         unlockAppsButton.setOnClickListener(v -> {
-            sensorManager.unregisterListener(this);
+            // Stop listening for exercise
+            if (sensorManager != null) sensorManager.unregisterListener(this);
 
-            // Check if we have earned time first
-            if (!timeCounter.hasTime()) {
-                Log.d("MainActivity", "No earned time available");
+            long earnedTime = timeCounter.getEarnedTime();
+            if (earnedTime <= 0) {
                 remainingTime.setText("No time earned!");
                 return;
             }
 
-            Log.d("MainActivity", "Starting unlock with time: " + timeCounter.getFormattedTime());
+            // Start countdown for unlocking apps
+            unlockTimeLeft = earnedTime;
+            isUnlockActive = true;
 
-            // Start the countdown in the timer
-            timeCounter.startCountdown();
+            // Reset earned time so exercise won't interfere
+            timeCounter.reset();
 
-            // Try to notify the service if available
+            // Notify service
             AppBlockerService blocker = AppBlockerService.getInstance();
-            if (blocker != null) {
-                Log.d("MainActivity", "Notifying AppBlockerService");
-                blocker.startExerciseUnlockWithEarnedTime();
-            } else {
-                Log.w("MainActivity", "AppBlockerService not available - countdown will work but apps won't unlock");
-            }
+            if (blocker != null) blocker.startExerciseUnlockWithEarnedTime();
 
-            // Start UI countdown regardless
-            startCountdownDuringUnlock();
+            // Start UI countdown
+            startUnlockCountdown();
         });
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Update count when activity resumes
+        updateAppCount();
+        if (accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        }
+    }
 
+    private void updateAppCount() {
+        AppBlockerService blocker = AppBlockerService.getInstance();
+        if (blocker != null) {
+            int count = blocker.getLockedApps().size();
+            appCount.setText(String.valueOf(count));
+            Log.d("MainActivity", "Service available, locked apps: " + count);
+        } else {
+            List<App> savedApps = preferenceManager.getLockedApps();
+            int count = 0;
+            for (App app : savedApps) {
+                if (app.getSelected()) {
+                    count++;
+                }
+            }
+            appCount.setText(String.valueOf(count));
+            Log.d("MainActivity", "Service not ready, using saved data: " + count);
 
-
-
+            // Try again in 500ms if service isn't ready
+            handler.postDelayed(this::updateAppCount, 500);
+        }
+    }
 
     @Override
     public void onDataSelected(int position, App app) {
-        // Loop through all items in your static list
-        int count = 0;
-        for (int i = 0; i < appArray.size(); i++) {
-            App current = appArray.get(i);
-            if (current.getSelected()) {
-                count += 1;
-                Log.d("MainActivity", "Selected: " + current.getAppName() + " at pos " + i);
-            }
+        // Save to preferences as backup
+        if (app.getSelected()) {
+            preferenceManager.addLockedApp(app);
+        } else {
+            preferenceManager.removeLockedApp(app.getPackageName());
         }
-        appCount.setText(String.valueOf(count));
+        updateAppCount();
     }
-
-
     @Override
     public void onSensorChanged(SensorEvent event) {
         exerciseCounter.onSensorChanged(event);
@@ -162,34 +204,25 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     @Override
     protected void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // re-attach listener if needed
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
         }
     }
 
-    private void startCountdownDuringUnlock() {
+    private void startUnlockCountdown() {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                // DON'T call countdown() here - let AppBlockerService handle it
-                // Just update the UI with current time
-                long currentTime = timeCounter.getEarnedTime();
-                android.util.Log.d("MainActivity", "UI Update - current time: " + currentTime + "ms");
+                if (unlockTimeLeft > 0) {
+                    long minutes = unlockTimeLeft / 1000 / 60;
+                    long seconds = (unlockTimeLeft / 1000) % 60;
+                    remainingTime.setText(String.format("%02d:%02d", minutes, seconds));
 
-                if (timeCounter.hasTime()) {
-                    remainingTime.setText(timeCounter.getFormattedTime());
-                    handler.postDelayed(this, 1000); // Update UI every second
+                    unlockTimeLeft -= 1000;
+                    handler.postDelayed(this, 1000);
                 } else {
-                    // countdown finished
                     remainingTime.setText("00:00");
-                    android.util.Log.d("MainActivity", "Time expired - ending unlock");
+                    isUnlockActive = false;
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) blocker.endExerciseUnlock();
                 }

@@ -40,18 +40,18 @@ public class RecycleViewAdapter extends RecyclerView.Adapter<RecycleViewAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull RecycleViewAdapter.MyViewHolder holder, int position) {
-        //assign values to the views
-        holder.icon.setImageResource(appArray.get(position).getAppIcon());
-        holder.nameText.setText(appArray.get(position).getAppName());
-        //this allows the user to select and deselect users and when doing so, user's icons would update accordingly
-        if(appArray.get(position).getSelected()){
+        App currentApp = appArray.get(position);
+
+        holder.icon.setImageResource(currentApp.getAppIcon());
+        holder.nameText.setText(currentApp.getAppName());
+
+        if (currentApp.getSelected()) {
             holder.groupButton.setImageResource(R.drawable.added_icon);
-            holder.groupButton.setSelected(false);
         } else {
             holder.groupButton.setImageResource(R.drawable.add_icon);
         }
-        holder.groupButton.requestLayout();;
     }
+
 
     @Override
     public int getItemCount() {

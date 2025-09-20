@@ -9,19 +9,33 @@ import android.view.accessibility.AccessibilityEvent;
 import com.example.oompa.App;
 import com.example.oompa.MainActivity;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AppBlockerService extends AccessibilityService {
 
-    private Map<String, App> lockedApps;
+    private static final Map<String, App> lockedApps = new HashMap<>();
+    private PreferenceManager preferenceManager;
+
+    // --- Earned Time Counter ---
     private earnedTimeCounter timeCounter;
 
+    // --- Daily full lock schedule ---
     private long dailyFullLock = System.currentTimeMillis();
-    private int lockUnlockDurationHours = 3;
-    private long dailyFullUnlock = dailyFullLock + (lockUnlockDurationHours * 60 * 60 * 1000L);
+    private int lockUnlockDurationHours = 3;// start of full lock period
+    private long dailyFullUnlock = dailyFullLock + (lockUnlockDurationHours * 60 * 60 * 1000L);    // end of full lock period
 
-    private boolean isExerciseUnlockActive = false;
+    private long lastLockTimeSet;
+    private static final long ONE_WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000;
+
+    // --- Exercise unlock state ---
+    private long exerciseUnlockStart;
+    private long exerciseUnlockEnd;
+    private int maxDailyExerciseUnlocks = 2;
+    private int exerciseUnlocksUsed = 0;
+    private boolean isExerciseUnlockActive = false; // Track if we're in exercise unlock mode
 
     private Handler handler = new Handler();
     private static AppBlockerService instance;
@@ -34,9 +48,29 @@ public class AppBlockerService extends AccessibilityService {
     public void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
-        lockedApps = new HashMap<>();
+
+        // Initialize PreferenceManager
+        preferenceManager = new PreferenceManager(this);
+
+        // Load saved apps from preferences
+        loadSavedApps();
+
+        timeCounter = new earnedTimeCounter(this);
         timeCounter = earnedTimeCounter.getInstance(this);
         handler.post(lockChecker);
+
+        Log.d("AppBlockerService", "Service connected, loaded " + lockedApps.size() + " apps");
+    }
+
+    private void loadSavedApps() {
+        lockedApps.clear(); // Clear existing
+        List<App> savedApps = preferenceManager.getLockedApps();
+        for (App app : savedApps) {
+            if (app.getSelected()) {
+                lockedApps.put(app.getPackageName(), app);
+            }
+        }
+        Log.d("AppBlockerService", "Loaded " + lockedApps.size() + " locked apps from preferences");
     }
 
     @Override
@@ -46,31 +80,106 @@ public class AppBlockerService extends AccessibilityService {
         if (timeCounter != null) {
             timeCounter.stopCountdown();
         }
+        // Save apps before destroying
+        saveAppsToPreferences();
         instance = null;
+    }
+
+    private void saveAppsToPreferences() {
+        if (preferenceManager != null) {
+            List<App> appsToSave = new ArrayList<>(lockedApps.values());
+            preferenceManager.saveLockedApps(appsToSave);
+            Log.d("AppBlockerService", "Saved " + appsToSave.size() + " apps to preferences");
+        }
     }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            String packageName = event.getPackageName() != null ? event.getPackageName().toString() : "";
-            App app = lockedApps.get(packageName);
+            String packageName = (event.getPackageName() != null) ? event.getPackageName().toString() : "";
 
-            if(app != null && app.getSelected()) {
+            // Skip our own app to avoid infinite loops
+            if (packageName.equals(getPackageName())) {
+                return;
+            }
+
+            Log.d("AccessibilityEvent", "Package: " + packageName);
+
+            // Check if this app should be blocked
+            if (shouldBlockApp(packageName)) {
+                Log.d("AppBlocker", "Blocking app: " + packageName);
+                // Redirect to lock screen
                 Intent i = new Intent(this, MainActivity.class);
                 i.putExtra("blockedApp", packageName);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(i);
             }
         }
     }
 
+    private boolean shouldBlockApp(String packageName) {
+        App app = lockedApps.get(packageName);
+        if (app == null) return false;
+
+        // Only check if app is selected
+        return app.getSelected();
+    }
+
+    /*private boolean shouldBlockApp(String packageName) {
+        // Check if app is in locked list
+        App app = lockedApps.get(packageName);
+        if (app == null) {
+            return false;
+        }
+
+        // Check current lock status based on time rules
+        boolean dailyLock = isDailyLocked();
+        boolean exerciseUnlock = isExerciseUnlocked();
+
+        Log.d("AppBlocker", "App: " + packageName +
+                ", DailyLock: " + dailyLock +
+                ", ExerciseUnlock: " + exerciseUnlock +
+                ", Selected: " + app.getSelected());
+
+        // Block if it's daily lock time and not in exercise unlock period
+        return dailyLock && !exerciseUnlock && app.getSelected();
+    }*/
+
     @Override
     public void onInterrupt() { }
 
-    public void addLockedApp(App app) { lockedApps.put(app.getPackageName(), app); }
-    public void removeLockedApp(String packageName) { lockedApps.remove(packageName); }
+    // ------------------ Backend Methods ------------------
 
-    /** Start exercise unlock period manually (on Unlock Apps button press) */
+    public void addLockedApp(App app) {
+        app.setSelected(true);
+        lockedApps.put(app.getPackageName(), app);
+        // Save to preferences immediately
+        if (preferenceManager != null) {
+            preferenceManager.addLockedApp(app);
+        }
+        Log.d("AppBlockerService", "Added locked app: " + app.getAppName() + ", total: " + lockedApps.size());
+    }
+
+    public void removeLockedApp(String packageName) {
+        App removedApp = lockedApps.remove(packageName);
+        // Remove from preferences
+        if (preferenceManager != null) {
+            preferenceManager.removeLockedApp(packageName);
+        }
+        if (removedApp != null) {
+            Log.d("AppBlockerService", "Removed locked app: " + removedApp.getAppName() + ", total: " + lockedApps.size());
+        }
+    }
+
+    public List<App> getLockedApps() {
+        return new ArrayList<>(lockedApps.values());
+    }
+
+    public boolean isLocked(String packageName) {
+        App app = lockedApps.get(packageName);
+        return app != null && app.getSelected();
+    }
+
     public void startExerciseUnlockWithEarnedTime() {
         Log.d("AppBlockerService", "startExerciseUnlockWithEarnedTime called");
         Log.d("AppBlockerService", "Has time: " + timeCounter.hasTime());
@@ -89,6 +198,7 @@ public class AppBlockerService extends AccessibilityService {
 
     /** End exercise unlock */
     public void endExerciseUnlock() {
+        exerciseUnlockEnd = System.currentTimeMillis();
         isExerciseUnlockActive = false;
         timeCounter.stopCountdown(); // 🔹 STOP countdown here
         updateActiveLocks();
