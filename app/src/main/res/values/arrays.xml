@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="category_item_array">
+        <item>@drawable/instagram</item>
+        <item>@drawable/tt</item>
+        <item>@drawable/yt</item>
+        <item>@drawable/fb</item>
+        <item>@drawable/x</item>
+        <item>@drawable/reddit</item>
+        <item>@drawable/sc</item>
+    </array>
+
+    <array name="category_name_array">
+        <item>Instagram</item>
+        <item>Tiktok</item>
+        <item>Youtube</item>
+        <item>Facebook</item>
+        <item>X</item>
+        <item>Reddit</item>
+        <item>Snapchat</item>
+    </array>
+    <array name="category_package_array">
+        <item>Instagram</item>
+        <item>Tiktok</item>
+        <item>Youtube</item>
+        <item>Facebook</item>
+        <item>X</item>
+        <item>Reddit</item>
+        <item>Snapchat</item>
+    </array>
+</resources>

@@ -7,7 +7,7 @@
     <string name="start_exercise">Start Exercising</string>
     <string name="exercises_done">Exercises done so far: </string>
     <string name="time_left_to_doomscroll">Time left to doomscroll</string>
-    <string name="modify_blocked_apps">Modify</string>
+    <string name="modify_blocked_apps">Modify blocked apps</string>
     <string name="modify_blocked_timing">Modify blocked timing</string>
     <string name="instructions">1 pushup = 1 min for doomscrolling!</string>
     <string name="exercises_done_count">0</string>
@@ -21,6 +21,8 @@
     <string name="to">-</string>
     <string name="time_blocked_count_end">3am</string>
     <string name="text_time_blocked">Time Blocked:</string>
+    <string name="confirm">Confirm</string>
+
 
 
 </resources>
