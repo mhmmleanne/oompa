@@ -68,20 +68,29 @@ public class AppBlockerService extends AccessibilityService {
         preferenceManager.saveLockedApps(new ArrayList<>(lockedApps.values()));
     }
 
+    private String currentForegroundApp = "";
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             String packageName = event.getPackageName() != null ? event.getPackageName().toString() : "";
             if (packageName.equals(getPackageName())) return;
 
+            // Track current foreground app
+            currentForegroundApp = packageName;
+
             if (shouldBlockApp(packageName)) {
-                Intent i = new Intent(this, MainActivity.class);
-                i.putExtra("blockedApp", packageName);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(i);
-                Log.d("AppBlockerService", "Blocked access to: " + packageName);
+                blockApp(packageName);
             }
         }
+    }
+
+    private void blockApp(String packageName) {
+        Intent i = new Intent(this, MainActivity.class);
+        i.putExtra("blockedApp", packageName);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(i);
+        Log.d("AppBlockerService", "Blocked access to: " + packageName);
     }
 
     private boolean shouldBlockApp(String packageName) {
@@ -140,6 +149,12 @@ public class AppBlockerService extends AccessibilityService {
         // Force all locked apps to be active again
         for (App app : lockedApps.values()) {
             app.setSelected(true);
+        }
+
+        // Check if we need to block the currently running app
+        if (!currentForegroundApp.isEmpty() && shouldBlockApp(currentForegroundApp)) {
+            Log.d("AppBlockerService", "Blocking currently running app after unlock expired: " + currentForegroundApp);
+            blockApp(currentForegroundApp);
         }
 
         Log.d("AppBlockerService", "Exercise unlock ended - apps now locked: " + lockedApps.size());
@@ -206,6 +221,13 @@ public class AppBlockerService extends AccessibilityService {
             // Update lock states if unlock status changed
             if (wasUnlockActive != isExerciseUnlockActive) {
                 updateActiveLocks();
+
+                // If unlock just ended, check current app immediately
+                if (wasUnlockActive && !isExerciseUnlockActive &&
+                        !currentForegroundApp.isEmpty() && shouldBlockApp(currentForegroundApp)) {
+                    Log.d("AppBlockerService", "Immediately blocking current app after unlock ended: " + currentForegroundApp);
+                    blockApp(currentForegroundApp);
+                }
             }
 
             // Check more frequently during unlock periods for better responsiveness
