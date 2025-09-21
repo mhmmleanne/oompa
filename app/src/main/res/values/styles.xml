@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    </style>
     <style name="textViewBigLightMode">
         <item name="android:fontFamily">@font/defaultfont</item>
         <item name="android:textColor">@color/text_colour_light_mode</item>

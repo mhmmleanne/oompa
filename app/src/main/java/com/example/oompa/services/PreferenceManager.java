@@ -17,6 +17,8 @@ public class PreferenceManager {
     private static final String PREF_NAME = "MyAppPreferences";
     private static final String KEY_LOCKED_APPS = "locked_apps";
     private static final String KEY_UNLOCK_TIME = "unlock_time_millis";
+    private static final String KEY_EARNED_CREDITS = "earned_credits";
+
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
@@ -28,14 +30,15 @@ public class PreferenceManager {
         gson = new Gson();
     }
 
-    // Save blocked apps list
+    // =========================
+    // 🔹 Locked apps management
+    // =========================
     public void saveLockedApps(List<App> apps) {
         String json = gson.toJson(apps);
         editor.putString(KEY_LOCKED_APPS, json);
         editor.apply();
     }
 
-    // Load blocked apps list
     public List<App> getLockedApps() {
         String json = sharedPreferences.getString(KEY_LOCKED_APPS, null);
         if (json == null) return new ArrayList<>();
@@ -43,7 +46,6 @@ public class PreferenceManager {
         return gson.fromJson(json, type);
     }
 
-    // Add a single app
     public void addLockedApp(App app) {
         List<App> apps = getLockedApps();
         boolean exists = false;
@@ -57,7 +59,6 @@ public class PreferenceManager {
         saveLockedApps(apps);
     }
 
-    // Remove a single app
     public void removeLockedApp(String packageName) {
         List<App> apps = getLockedApps();
         List<App> updated = new ArrayList<>();
@@ -67,7 +68,6 @@ public class PreferenceManager {
         saveLockedApps(updated);
     }
 
-    // Check if an app is blocked
     public boolean isLocked(String packageName) {
         List<App> apps = getLockedApps();
         for (App a : apps) {
@@ -76,22 +76,45 @@ public class PreferenceManager {
         return false;
     }
 
-    /** Save unlock time in milliseconds */
-    public void saveUnlockTime(long millis) {
-        editor.putLong(KEY_UNLOCK_TIME, millis);
+    // =========================
+    // 🔹 Earned credits (static)
+    // =========================
+    public void addEarnedCredits(long millis) {
+        long current = getEarnedCredits();
+        editor.putLong(KEY_EARNED_CREDITS, current + millis);
         editor.apply();
     }
 
-    /** Get unlock time in milliseconds (default 0 if none) */
-    public long getUnlockTime() {
-        return sharedPreferences.getLong(KEY_UNLOCK_TIME, 0L);
+    public long getEarnedCredits() {
+        return sharedPreferences.getLong(KEY_EARNED_CREDITS, 0L);
     }
 
-    /** Clear unlock time (reset to 0) */
-    public void clearUnlockTime() {
+    public void clearEarnedCredits() {
+        editor.putLong(KEY_EARNED_CREDITS, 0L);
+        editor.apply();
+    }
+
+    // =========================
+    // 🔹 Unlock countdown (dynamic)
+    // =========================
+    public void startUnlockCountdown(long durationMillis) {
+        long endTime = System.currentTimeMillis() + durationMillis;
+        editor.putLong(KEY_UNLOCK_TIME, endTime);
+        editor.apply();
+    }
+
+    public long getUnlockRemainingTime() {
+        long endTime = sharedPreferences.getLong(KEY_UNLOCK_TIME, 0L);
+        long remaining = endTime - System.currentTimeMillis();
+        return Math.max(remaining, 0);
+    }
+
+    public boolean isUnlockActive() {
+        return getUnlockRemainingTime() > 0;
+    }
+
+    public void clearUnlockCountdown() {
         editor.remove(KEY_UNLOCK_TIME);
         editor.apply();
     }
-
-
 }

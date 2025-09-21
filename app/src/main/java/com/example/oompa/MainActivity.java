@@ -121,8 +121,8 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         unlockAppsButton.setOnClickListener(v -> {
             if (sensorManager != null) sensorManager.unregisterListener(this);
 
-            long newEarnedTime = timeCounter.getEarnedTime(); // only new earned from exercises
-            if (newEarnedTime <= 0) {
+            long credits = timeCounter.getEarnedTime();
+            if (credits <= 0) {
                 remainingTime.setText("No time earned!");
                 return;
             }
@@ -130,19 +130,15 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             startExercisingButton.setEnabled(false);
             startExercisingButton.setAlpha(0.5f);
 
-            // Combine leftover + new earned time
-            unlockTimeLeft = leftoverTime + newEarnedTime;
-            leftoverTime = 0;  // reset leftover
-
-            // Start countdown in earnedTimeCounter singleton (so service knows)
-            timeCounter.reset();          // consume all earned time
-            timeCounter.startCountdown(); // begin countdown with unlockTimeLeft
+            // Consume credits and start unlock countdown
+            timeCounter.resetCredits();
+            timeCounter.startCountdown(credits);
 
             isUnlockActive = true;
 
             AppBlockerService blocker = AppBlockerService.getInstance();
             if (blocker != null) {
-                blocker.startExerciseUnlock(unlockTimeLeft);
+                blocker.startExerciseUnlock(credits);
             }
 
             startUnlockCountdown();
@@ -158,17 +154,13 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
         if (timeCounter.isCountingDown()) {
             isUnlockActive = true;
-            unlockTimeLeft = timeCounter.getEarnedTime();
-
-            // Only start countdown if no existing Runnable is running
-            if (unlockRunnable == null) {
-                startUnlockCountdown();
-            }
+            unlockTimeLeft = timeCounter.getRemainingUnlockTime();
+            if (unlockRunnable == null) startUnlockCountdown();
 
             startExercisingButton.setEnabled(false);
             startExercisingButton.setAlpha(0.5f);
         } else {
-            remainingTime.setText(timeCounter.getFormattedTime());
+            remainingTime.setText(timeCounter.getFormattedCredits());
             startExercisingButton.setEnabled(true);
             startExercisingButton.setAlpha(1f);
         }
@@ -177,6 +169,7 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
     }
+
 
 
 
@@ -219,16 +212,17 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     public void onSensorChanged(SensorEvent event) {
         exerciseCounter.onSensorChanged(event);
 
-        String info =
-                "Jumps: " + exerciseCounter.getJumpCount() +
-                        "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
-                        "\nEarned Time: " + timeCounter.getFormattedTime();
+        String info = "Jumps: " + exerciseCounter.getJumpCount() +
+                "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
+                "\nEarned Time: " + timeCounter.getFormattedCredits();
 
         exerciseCountInfo.setText(info);
+
         if (!isUnlockActive) {
-            remainingTime.setText(timeCounter.getFormattedTime());
+            remainingTime.setText(timeCounter.getFormattedCredits());
         }
     }
+
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
@@ -242,23 +236,15 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     }
 
     private void startUnlockCountdown() {
-        if (unlockRunnable != null) {
-            handler.removeCallbacks(unlockRunnable); // cancel previous
-        }
+        if (unlockRunnable != null) handler.removeCallbacks(unlockRunnable);
 
         unlockRunnable = new Runnable() {
             @Override
             public void run() {
+                unlockTimeLeft = timeCounter.getRemainingUnlockTime();
+
                 if (isUnlockActive && unlockTimeLeft > 0) {
-                    long minutes = unlockTimeLeft / 1000 / 60;
-                    long seconds = (unlockTimeLeft / 1000) % 60;
-                    remainingTime.setText(String.format("%02d:%02d", minutes, seconds));
-
-                    unlockTimeLeft -= 1000;
-
-                    // decrement singleton
-                    timeCounter.countdown();
-
+                    remainingTime.setText(timeCounter.formatMillis(unlockTimeLeft));
                     handler.postDelayed(this, 1000);
                 } else {
                     remainingTime.setText("00:00");
@@ -269,7 +255,6 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) blocker.endExerciseUnlock();
 
-                    leftoverTime = timeCounter.getEarnedTime();
                     timeCounter.stopCountdown();
                 }
             }
@@ -277,6 +262,7 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
         handler.post(unlockRunnable);
     }
+
 
 
 
