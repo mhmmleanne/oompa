@@ -2,7 +2,6 @@ package com.example.oompa.services;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 
 import com.example.oompa.App;
 
@@ -19,7 +18,6 @@ public class PreferenceManager {
     private static final String KEY_UNLOCK_TIME = "unlock_time_millis";
     private static final String KEY_EARNED_CREDITS = "earned_credits";
 
-
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor editor;
     private Gson gson;
@@ -31,7 +29,7 @@ public class PreferenceManager {
     }
 
     // =========================
-    // 🔹 Locked apps management
+    // Locked apps management
     // =========================
     public void saveLockedApps(List<App> apps) {
         String json = gson.toJson(apps);
@@ -69,15 +67,14 @@ public class PreferenceManager {
     }
 
     public boolean isLocked(String packageName) {
-        List<App> apps = getLockedApps();
-        for (App a : apps) {
+        for (App a : getLockedApps()) {
             if (a.getPackageName().equals(packageName) && a.getSelected()) return true;
         }
         return false;
     }
 
     // =========================
-    // 🔹 Earned credits (static)
+    // Earned credits (static)
     // =========================
     public void addEarnedCredits(long millis) {
         long current = getEarnedCredits();
@@ -95,7 +92,7 @@ public class PreferenceManager {
     }
 
     // =========================
-    // 🔹 Unlock countdown (dynamic)
+    // Unlock countdown (dynamic)
     // =========================
     public void startUnlockCountdown(long durationMillis) {
         long endTime = System.currentTimeMillis() + durationMillis;
