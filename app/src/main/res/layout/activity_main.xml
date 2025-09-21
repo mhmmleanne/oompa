@@ -8,74 +8,6 @@
     android:background="@drawable/background4"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/blocked_timing_div"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="20dp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/blocked_apps_div">
-
-        <TextView
-            android:id="@+id/text_time_blocked"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/text_time_blocked"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/blocked_timing_start"
-            style="@style/textViewMediumDarkMode"/>
-
-        <TextView
-            android:id="@+id/blocked_timing_start"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/time_blocked_count_start"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/blocked_timing_to"
-            app:layout_constraintTop_toBottomOf="@id/text_time_blocked"
-            app:layout_constraintBottom_toBottomOf="parent"
-            style="@style/textViewMediumDarkMode"/>
-
-        <TextView
-            android:id="@+id/blocked_timing_to"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/to"
-            app:layout_constraintStart_toEndOf="@id/blocked_timing_start"
-            app:layout_constraintEnd_toStartOf="@id/blocked_timing_end"
-            app:layout_constraintTop_toBottomOf="@id/text_time_blocked"
-            app:layout_constraintBottom_toBottomOf="parent"
-            style="@style/textViewMediumDarkMode"/>
-
-        <TextView
-            android:id="@+id/blocked_timing_end"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/time_blocked_count_end"
-            app:layout_constraintStart_toEndOf="@id/blocked_timing_to"
-            app:layout_constraintEnd_toStartOf="@id/modify_blocked_timing_button"
-            app:layout_constraintTop_toBottomOf="@id/text_time_blocked"
-            app:layout_constraintBottom_toBottomOf="parent"
-            style="@style/textViewMediumDarkMode"/>
-
-        <Button
-            android:id="@+id/modify_blocked_timing_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/modify_blocked_timing"
-            app:layout_constraintStart_toEndOf="@id/blocked_timing_end"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/blocked_timing_end"
-            app:layout_constraintBottom_toBottomOf="@id/blocked_timing_end"
-            style="@style/ButtonDarkMode"/>
-
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
 
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -85,7 +17,7 @@
         android:layout_margin="20dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/blocked_timing_div"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/instructions_div">
 
         <TextView
@@ -169,7 +101,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/text_exercises_done"
             app:layout_constraintBottom_toTopOf="@id/text_remaining_time"
-            style="@style/textViewBigDarkMode"/>
+            style="@style/textViewMediumDarkMode"/>
 
         <TextView
             android:id="@+id/text_remaining_time"
