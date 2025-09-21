@@ -168,4 +168,10 @@ public class AppBlockerService extends AccessibilityService {
 
     public earnedTimeCounter getTimeCounter() { return timeCounter; }
     public boolean isExerciseUnlockActive() { return isExerciseUnlockActive; }
+
+    public boolean isLocked(String packageName) {
+        App app = lockedApps.get(packageName);
+        return app != null && app.getSelected();
+    }
+
 }

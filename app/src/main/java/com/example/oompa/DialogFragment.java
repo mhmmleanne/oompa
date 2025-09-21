@@ -31,26 +31,23 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
     private RecycleViewAdapter adapter;
     private DialogFragmentListener<App> listener;
 
-    // static list of apps
-    public static ArrayList<App> appArray;
-    PreferenceManager preferenceManager;
-
+    private static ArrayList<App> appArray;
+    private PreferenceManager preferenceManager;
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        super.onCreateView(inflater, container, savedInstanceState);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_select_group, container, false);
 
-        // Initialize PreferenceManager
         preferenceManager = new PreferenceManager(getContext());
 
         titleText = rootView.findViewById(R.id.select_group);
         titleText.setText(R.string.modify_blocked_apps);
+
         appView = rootView.findViewById(R.id.select_group_recycle);
         appArray = new ArrayList<>();
         showAppList();
+
         adapter = new RecycleViewAdapter(getActivity(), appArray, this);
         appView.setAdapter(adapter);
         appView.setLayoutManager(new LinearLayoutManager(getActivity()));
@@ -64,91 +61,79 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
     @Override
     public void onStart() {
         super.onStart();
-        if (getDialog() != null) {
-            getDialog().getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
     }
 
-    //  Toggle selected state when user clicks an item button
     @Override
     public void onButtonClick(int position) {
         App app = appArray.get(position);
         app.setSelected(!app.getSelected());
-        appView.getAdapter().notifyItemChanged(position);
+        adapter.notifyItemChanged(position);
 
-        confirmButton.setVisibility(VISIBLE);
+        confirmButton.setVisibility(View.VISIBLE);
         confirmButton.setOnClickListener(v -> {
             if (listener != null) {
-                ArrayList<App> selectedApps = getSelectedApps();
-                ArrayList<App> deselectedApps = getDeselectedApps();
-
-                Log.d("DialogFragment", "Selected apps: " + selectedApps.size());
-                Log.d("DialogFragment", "Deselected apps: " + deselectedApps.size());
-
-                // Add selected apps
-                for (App selectedApp : selectedApps) {
-                    Log.d("DialogFragment", "Adding app: " + selectedApp.toString());
-                    AppBlockerService blocker = AppBlockerService.getInstance();
-                    if (blocker != null) {
-                        blocker.addLockedApp(selectedApp);
-                        blocker.updateActiveLocks();
-                    } else {
-                        // Service not ready, save to preferences
-                        preferenceManager.addLockedApp(selectedApp);
-                    }
-                    listener.onDataSelected(position, selectedApp);
-                }
-
-                // Remove deselected apps
-                for (App deselectedApp : deselectedApps) {
-                    Log.d("DialogFragment", "Removing app: " + deselectedApp.toString());
-                    AppBlockerService blocker = AppBlockerService.getInstance();
-                    if (blocker != null) {
-                        blocker.removeLockedApp(deselectedApp.getPackageName());
-                        blocker.updateActiveLocks();
-                    } else {
-                        // Service not ready, remove from preferences
-                        preferenceManager.removeLockedApp(deselectedApp.getPackageName());
-                    }
-                    listener.onDataSelected(position, deselectedApp);
-                }
-
-                AppBlockerService blocker = AppBlockerService.getInstance();
-                if (blocker != null) {
-                    Log.d("DialogFragment", "Total locked apps: " + blocker.getLockedApps().size());
-                }
+                handleAppSelection();
             }
             dismiss();
         });
     }
 
+    private void handleAppSelection() {
+        ArrayList<App> selectedApps = getSelectedApps();
+        ArrayList<App> deselectedApps = getDeselectedApps();
+
+        AppBlockerService blocker = AppBlockerService.getInstance();
+
+        for (App app : selectedApps) {
+            if (blocker != null) {
+                blocker.addLockedApp(app);
+                blocker.updateActiveLocks();
+            } else {
+                preferenceManager.addLockedApp(app);
+            }
+            listener.onDataSelected(appArray.indexOf(app), app);
+        }
+
+        for (App app : deselectedApps) {
+            if (blocker != null) {
+                blocker.removeLockedApp(app.getPackageName());
+                blocker.updateActiveLocks();
+            } else {
+                preferenceManager.removeLockedApp(app.getPackageName());
+            }
+            listener.onDataSelected(appArray.indexOf(app), app);
+        }
+
+        if (blocker != null) {
+            Log.d("DialogFragment", "Total locked apps: " + blocker.getLockedApps().size());
+        }
+    }
+
     private ArrayList<App> getSelectedApps() {
         ArrayList<App> selected = new ArrayList<>();
         for (App app : appArray) {
-            if (app.getSelected()) {
-                selected.add(app);
-            }
+            if (app.getSelected()) selected.add(app);
         }
         return selected;
     }
 
     private ArrayList<App> getDeselectedApps() {
         ArrayList<App> deselected = new ArrayList<>();
+        AppBlockerService blocker = AppBlockerService.getInstance();
+
         for (App app : appArray) {
             if (!app.getSelected()) {
-                // Check if this app was previously selected (locked)
-                AppBlockerService blocker = AppBlockerService.getInstance();
                 boolean wasLocked = false;
                 if (blocker != null) {
                     wasLocked = blocker.isLocked(app.getPackageName());
-                } else {
+                }
+                if (!wasLocked) {
                     wasLocked = preferenceManager.isLocked(app.getPackageName());
                 }
-
-                if (wasLocked) {
-                    deselected.add(app);
-                }
+                if (wasLocked) deselected.add(app);
             }
         }
         return deselected;
@@ -180,15 +165,14 @@ public class DialogFragment extends androidx.fragment.app.DialogFragment impleme
                     break;
                 }
             }
-
             if (!exists) {
                 int imageResId = imageArray.getResourceId(i, 0);
-
                 boolean isSelected = false;
-                if (blocker != null && blocker.isLocked(packageList[i])) {
-                    isSelected = true; // restore blocked state from service
-                } else if (preferenceManager.isLocked(packageList[i])) {
-                    isSelected = true; // restore blocked state from preferences if service not ready
+
+                if (blocker != null) {
+                    isSelected = blocker.isLocked(packageList[i]);
+                } else {
+                    isSelected = preferenceManager.isLocked(packageList[i]);
                 }
 
                 appArray.add(new App(packageList[i], nameList[i], isSelected, imageResId));
