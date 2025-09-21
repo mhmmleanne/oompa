@@ -117,20 +117,32 @@ public class AppBlockerService extends AccessibilityService {
 
     public void updateActiveLocks() {
         boolean dailyLock = System.currentTimeMillis() >= dailyFullLock && System.currentTimeMillis() < dailyFullUnlock;
+
         for (App app : lockedApps.values()) {
             // Apps are locked during daily lock period, unless exercise unlock is active
-            app.setSelected(dailyLock);
+            if (dailyLock) {
+                app.setSelected(true); // Always locked during daily lock period
+            } else {
+                app.setSelected(false); // Not in daily lock period
+            }
         }
+
         Log.d("AppBlockerService", "Updated active locks. Daily lock: " + dailyLock +
-                ", Exercise unlock: " + isExerciseUnlockActive);
+                ", Exercise unlock: " + isExerciseUnlockActive + ", Total apps: " + lockedApps.size());
     }
 
     public void endExerciseUnlock() {
+        Log.d("AppBlockerService", "Ending exercise unlock - was active: " + isExerciseUnlockActive);
         isExerciseUnlockActive = false;
         timeCounter.stopCountdown();
         preferenceManager.clearUnlockCountdown();
-        updateActiveLocks();
-        Log.d("AppBlockerService", "Exercise unlock ended");
+
+        // Force all locked apps to be active again
+        for (App app : lockedApps.values()) {
+            app.setSelected(true);
+        }
+
+        Log.d("AppBlockerService", "Exercise unlock ended - apps now locked: " + lockedApps.size());
     }
 
     public void startExerciseUnlock(long earnedMillis) {
@@ -139,7 +151,7 @@ public class AppBlockerService extends AccessibilityService {
             return;
         }
 
-        // First add any newly earned time to credits
+        // Only add newly earned time if provided
         if (earnedMillis > 0) {
             preferenceManager.addEarnedCredits(earnedMillis);
         }
@@ -186,9 +198,9 @@ public class AppBlockerService extends AccessibilityService {
                 isExerciseUnlockActive = true;
                 Log.d("AppBlockerService", "Restored unlock state with " + remaining + "ms remaining");
             } else if (remaining <= 0 && isExerciseUnlockActive) {
-                // Countdown finished
+                // Countdown finished - immediately end unlock
+                Log.d("AppBlockerService", "Countdown expired, ending unlock immediately");
                 endExerciseUnlock();
-                Log.d("AppBlockerService", "Unlock countdown expired");
             }
 
             // Update lock states if unlock status changed

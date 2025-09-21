@@ -91,10 +91,10 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                 return;
             }
 
-            // Start unlock session
+            // Start unlock session - this will consume the credits
             AppBlockerService blocker = AppBlockerService.getInstance();
             if (blocker != null) {
-                blocker.startExerciseUnlock(credits);
+                blocker.startExerciseUnlock(0); // Don't pass earnedMillis, use existing credits
             } else {
                 // Fallback if service not ready
                 timeCounter.startCountdown(credits);
@@ -113,6 +113,12 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         }
         isExercising = false;
         startExercisingButton.setText("Start Exercise");
+
+        // Reset exercise counters
+        if (exerciseCounter != null) {
+            exerciseCounter.reset();
+            updateExerciseDisplay();
+        }
     }
 
     private void updateUIForUnlockState() {
@@ -204,15 +210,18 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         // Only process sensor data if exercising and not unlocking
         if (isExercising && !isUnlockActive) {
             exerciseCounter.onSensorChanged(event);
-
-            String info = "Jumps: " + exerciseCounter.getJumpCount() +
-                    "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
-                    "\nEarned Time: " + timeCounter.getFormattedCredits();
-            exerciseCountInfo.setText(info);
+            updateExerciseDisplay();
 
             // Update remaining time display with earned credits
             remainingTime.setText(timeCounter.getFormattedCredits());
         }
+    }
+
+    private void updateExerciseDisplay() {
+        String info = "Jumps: " + exerciseCounter.getJumpCount() +
+                "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
+                "\nEarned Time: " + timeCounter.getFormattedCredits();
+        exerciseCountInfo.setText(info);
     }
 
     @Override
@@ -233,14 +242,18 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                     handler.postDelayed(this, 1000);
                 } else {
                     // Countdown finished
-                    remainingTime.setText(timeCounter.getFormattedCredits()); // Show earned credits
+                    remainingTime.setText("00:00");
                     isUnlockActive = false;
                     updateUIForUnlockState();
 
-                    // Ensure service state is updated
+                    // Force update exercise display to show current state
+                    updateExerciseDisplay();
+
+                    // Ensure service state is updated and apps are blocked again
                     AppBlockerService blocker = AppBlockerService.getInstance();
                     if (blocker != null) {
                         blocker.endExerciseUnlock();
+                        blocker.updateActiveLocks(); // Force immediate lock update
                     }
 
                     unlockRunnable = null; // Clear the runnable
