@@ -79,6 +79,7 @@ public class AppBlockerService extends AccessibilityService {
                 i.putExtra("blockedApp", packageName);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(i);
+                Log.d("AppBlockerService", "Blocked access to: " + packageName);
             }
         }
     }
@@ -86,7 +87,12 @@ public class AppBlockerService extends AccessibilityService {
     private boolean shouldBlockApp(String packageName) {
         App app = lockedApps.get(packageName);
         if (app == null) return false;
-        return !isExerciseUnlockActive && app.getSelected();
+
+        // Block if app is selected AND we're not in exercise unlock period
+        boolean shouldBlock = !isExerciseUnlockActive && app.getSelected();
+        Log.d("AppBlockerService", "Should block " + packageName + ": " + shouldBlock +
+                " (unlockActive: " + isExerciseUnlockActive + ", selected: " + app.getSelected() + ")");
+        return shouldBlock;
     }
 
     @Override
@@ -96,11 +102,13 @@ public class AppBlockerService extends AccessibilityService {
         app.setSelected(true);
         lockedApps.put(app.getPackageName(), app);
         preferenceManager.addLockedApp(app);
+        Log.d("AppBlockerService", "Added locked app: " + app.getPackageName());
     }
 
     public void removeLockedApp(String packageName) {
         lockedApps.remove(packageName);
         preferenceManager.removeLockedApp(packageName);
+        Log.d("AppBlockerService", "Removed locked app: " + packageName);
     }
 
     public List<App> getLockedApps() {
@@ -110,8 +118,11 @@ public class AppBlockerService extends AccessibilityService {
     public void updateActiveLocks() {
         boolean dailyLock = System.currentTimeMillis() >= dailyFullLock && System.currentTimeMillis() < dailyFullUnlock;
         for (App app : lockedApps.values()) {
-            app.setSelected(!isExerciseUnlockActive && dailyLock);
+            // Apps are locked during daily lock period, unless exercise unlock is active
+            app.setSelected(dailyLock);
         }
+        Log.d("AppBlockerService", "Updated active locks. Daily lock: " + dailyLock +
+                ", Exercise unlock: " + isExerciseUnlockActive);
     }
 
     public void endExerciseUnlock() {
@@ -119,22 +130,36 @@ public class AppBlockerService extends AccessibilityService {
         timeCounter.stopCountdown();
         preferenceManager.clearUnlockCountdown();
         updateActiveLocks();
+        Log.d("AppBlockerService", "Exercise unlock ended");
     }
 
     public void startExerciseUnlock(long earnedMillis) {
-        if (exerciseUnlocksUsed >= maxDailyExerciseUnlocks) return;
+        if (exerciseUnlocksUsed >= maxDailyExerciseUnlocks) {
+            Log.d("AppBlockerService", "Max daily unlocks reached");
+            return;
+        }
 
-        if (earnedMillis > 0) preferenceManager.addEarnedCredits(earnedMillis);
+        // First add any newly earned time to credits
+        if (earnedMillis > 0) {
+            preferenceManager.addEarnedCredits(earnedMillis);
+        }
 
+        // Get total available credits and start unlock session
         long available = preferenceManager.getEarnedCredits();
         if (available > 0) {
+            // Start countdown and clear credits (consume them)
             preferenceManager.startUnlockCountdown(available);
+            preferenceManager.clearEarnedCredits();
+
             exerciseUnlockStart = System.currentTimeMillis();
             exerciseUnlockEnd = exerciseUnlockStart + available;
-            preferenceManager.clearEarnedCredits();
             exerciseUnlocksUsed++;
             isExerciseUnlockActive = true;
             updateActiveLocks();
+
+            Log.d("AppBlockerService", "Exercise unlock started for " + available + "ms");
+        } else {
+            Log.d("AppBlockerService", "No credits available for unlock");
         }
     }
 
@@ -151,17 +176,27 @@ public class AppBlockerService extends AccessibilityService {
         @Override
         public void run() {
             long remaining = preferenceManager.getUnlockRemainingTime();
+            boolean wasUnlockActive = isExerciseUnlockActive;
 
             if (remaining > 0 && !isExerciseUnlockActive) {
+                // We have an active countdown but unlock isn't active - restore state
                 timeCounter.resetCredits();
                 timeCounter.addTime(remaining);
                 timeCounter.startCountdown(remaining);
                 isExerciseUnlockActive = true;
+                Log.d("AppBlockerService", "Restored unlock state with " + remaining + "ms remaining");
             } else if (remaining <= 0 && isExerciseUnlockActive) {
+                // Countdown finished
                 endExerciseUnlock();
+                Log.d("AppBlockerService", "Unlock countdown expired");
             }
 
-            updateActiveLocks();
+            // Update lock states if unlock status changed
+            if (wasUnlockActive != isExerciseUnlockActive) {
+                updateActiveLocks();
+            }
+
+            // Check more frequently during unlock periods for better responsiveness
             handler.postDelayed(this, isExerciseUnlockActive ? 1000 : 2000);
         }
     };
@@ -171,7 +206,8 @@ public class AppBlockerService extends AccessibilityService {
 
     public boolean isLocked(String packageName) {
         App app = lockedApps.get(packageName);
-        return app != null && app.getSelected();
+        boolean locked = app != null && app.getSelected() && !isExerciseUnlockActive;
+        Log.d("AppBlockerService", "Is " + packageName + " locked: " + locked);
+        return locked;
     }
-
 }

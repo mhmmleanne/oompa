@@ -1,7 +1,5 @@
 package com.example.oompa;
 
-
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -35,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     private long unlockTimeLeft;
     private boolean isUnlockActive = false;
     private Runnable unlockRunnable;
+    private boolean isExercising = false; // Track exercise state
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,13 +66,24 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         });
 
         startExercisingButton.setOnClickListener(v -> {
-            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            if (accelerometer != null) sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+            // Only allow exercise if not currently unlocking
+            if (!isUnlockActive) {
+                isExercising = true;
+                startExercisingButton.setText("Stop Exercise");
+                sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                if (accelerometer != null) {
+                    sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+                }
+            } else {
+                // Stop exercising
+                stopExercising();
+            }
         });
 
         unlockAppsButton.setOnClickListener(v -> {
-            if (sensorManager != null) sensorManager.unregisterListener(this);
+            // Stop any ongoing exercise
+            stopExercising();
 
             long credits = timeCounter.getEarnedTime();
             if (credits <= 0) {
@@ -81,19 +91,42 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                 return;
             }
 
-            startExercisingButton.setEnabled(false);
-            startExercisingButton.setAlpha(0.5f);
-
-            // Consume credits and start unlock countdown
-            timeCounter.resetCredits();
-            timeCounter.startCountdown(credits);
-            isUnlockActive = true;
-
+            // Start unlock session
             AppBlockerService blocker = AppBlockerService.getInstance();
-            if (blocker != null) blocker.startExerciseUnlock(credits);
+            if (blocker != null) {
+                blocker.startExerciseUnlock(credits);
+            } else {
+                // Fallback if service not ready
+                timeCounter.startCountdown(credits);
+                timeCounter.resetCredits();
+            }
 
+            isUnlockActive = true;
+            updateUIForUnlockState();
             startUnlockCountdown();
         });
+    }
+
+    private void stopExercising() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+        isExercising = false;
+        startExercisingButton.setText("Start Exercise");
+    }
+
+    private void updateUIForUnlockState() {
+        if (isUnlockActive) {
+            startExercisingButton.setEnabled(false);
+            startExercisingButton.setAlpha(0.5f);
+            startExercisingButton.setText("Unlocking...");
+            unlockAppsButton.setEnabled(false);
+        } else {
+            startExercisingButton.setEnabled(true);
+            startExercisingButton.setAlpha(1f);
+            startExercisingButton.setText("Start Exercise");
+            unlockAppsButton.setEnabled(true);
+        }
     }
 
     @Override
@@ -101,26 +134,44 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
         super.onResume();
         updateAppCount();
 
-        if (timeCounter.isCountingDown()) {
-            isUnlockActive = true;
-            unlockTimeLeft = timeCounter.getRemainingUnlockTime();
-            if (unlockRunnable == null) startUnlockCountdown();
-
-            startExercisingButton.setEnabled(false);
-            startExercisingButton.setAlpha(0.5f);
+        // Check if unlock is active from service
+        AppBlockerService blocker = AppBlockerService.getInstance();
+        if (blocker != null) {
+            isUnlockActive = blocker.isExerciseUnlockActive();
         } else {
-            remainingTime.setText(timeCounter.getFormattedCredits());
-            startExercisingButton.setEnabled(true);
-            startExercisingButton.setAlpha(1f);
+            isUnlockActive = timeCounter.isCountingDown();
         }
 
-        if (accelerometer != null) sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        if (isUnlockActive) {
+            unlockTimeLeft = timeCounter.getRemainingUnlockTime();
+            if (unlockTimeLeft > 0) {
+                updateUIForUnlockState();
+                if (unlockRunnable == null) {
+                    startUnlockCountdown();
+                }
+            } else {
+                // Countdown finished, reset state
+                isUnlockActive = false;
+                updateUIForUnlockState();
+            }
+        } else {
+            // Not unlocking, show earned credits
+            remainingTime.setText(timeCounter.getFormattedCredits());
+            updateUIForUnlockState();
+        }
+
+        // Only register sensor if we were exercising and not unlocking
+        if (isExercising && !isUnlockActive && accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (sensorManager != null) sensorManager.unregisterListener(this);
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
     }
 
     private void updateAppCount() {
@@ -150,14 +201,16 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        exerciseCounter.onSensorChanged(event);
+        // Only process sensor data if exercising and not unlocking
+        if (isExercising && !isUnlockActive) {
+            exerciseCounter.onSensorChanged(event);
 
-        String info = "Jumps: " + exerciseCounter.getJumpCount() +
-                "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
-                "\nEarned Time: " + timeCounter.getFormattedCredits();
-        exerciseCountInfo.setText(info);
+            String info = "Jumps: " + exerciseCounter.getJumpCount() +
+                    "\nJumping Jacks: " + exerciseCounter.getJumpingJackCount() +
+                    "\nEarned Time: " + timeCounter.getFormattedCredits();
+            exerciseCountInfo.setText(info);
 
-        if (!isUnlockActive) {
+            // Update remaining time display with earned credits
             remainingTime.setText(timeCounter.getFormattedCredits());
         }
     }
@@ -166,7 +219,9 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     private void startUnlockCountdown() {
-        if (unlockRunnable != null) handler.removeCallbacks(unlockRunnable);
+        if (unlockRunnable != null) {
+            handler.removeCallbacks(unlockRunnable);
+        }
 
         unlockRunnable = new Runnable() {
             @Override
@@ -177,18 +232,30 @@ public class MainActivity extends AppCompatActivity implements DialogFragmentLis
                     remainingTime.setText(timeCounter.formatMillis(unlockTimeLeft));
                     handler.postDelayed(this, 1000);
                 } else {
-                    remainingTime.setText("00:00");
+                    // Countdown finished
+                    remainingTime.setText(timeCounter.getFormattedCredits()); // Show earned credits
                     isUnlockActive = false;
-                    startExercisingButton.setEnabled(true);
-                    startExercisingButton.setAlpha(1f);
+                    updateUIForUnlockState();
 
+                    // Ensure service state is updated
                     AppBlockerService blocker = AppBlockerService.getInstance();
-                    if (blocker != null) blocker.endExerciseUnlock();
+                    if (blocker != null) {
+                        blocker.endExerciseUnlock();
+                    }
 
-                    timeCounter.stopCountdown();
+                    unlockRunnable = null; // Clear the runnable
                 }
             }
         };
         handler.post(unlockRunnable);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (unlockRunnable != null) {
+            handler.removeCallbacks(unlockRunnable);
+        }
+        stopExercising();
     }
 }
